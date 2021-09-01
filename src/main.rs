@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use serde_derive::Deserialize;
 use serde_derive::Serialize;
 
+use chrono::Duration;
+
 
 struct OsInfo {
     id: String,
@@ -109,16 +111,22 @@ fn get_hardware_info() -> HwInfo {
         .split_once(" ")
         .unwrap()
         .0
-        .parse::<f32>().unwrap() / 60_f32
-        .round();
+        .parse::<f32>().unwrap()
+        .round() as i64;
     
-    dbg!(uptime / 60f32);
-    
+    let uptime = Duration::seconds(uptime);
+    let hours = uptime.num_hours();
+    let mut minutes = uptime.num_minutes();
+    if hours != 0 {
+        minutes = minutes - (hours * 60);
+    } else {
+        minutes = 0;
+    }
 
     HwInfo {
         gpu: String::from("UnknOwOwn :("),
         cpu: format!("{} ({}) @ {}GHz", model_name, logical_cores, frequency),
-        uptime: format!("{} Minutes", uptime),
+        uptime: format!("{} Hours, {} Minutes", hours, minutes),
     }
 }
 
