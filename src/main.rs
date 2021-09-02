@@ -119,8 +119,6 @@ fn get_hardware_info() -> HwInfo {
     let mut minutes = uptime.num_minutes();
     if hours != 0 {
         minutes = minutes - (hours * 60);
-    } else {
-        minutes = 0;
     }
 
     HwInfo {
