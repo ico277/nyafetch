@@ -122,8 +122,11 @@ fn get_hardware_info() -> HwInfo {
         }
     }
     // Parse CPU freq
+    fn or_else_zero(_err: std::io::Error) -> std::io::Result<String> { Ok(String::from("0")) }
     let frequency = fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
-        .expect("There was an error whilst reading sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
+        //.expect("There was an error whilst reading sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
+        .or_else(or_else_zero)
+        .unwrap()
         .trim()
         .parse::<f32>().unwrap() / 1000_f32 / 1000_f32;
 
