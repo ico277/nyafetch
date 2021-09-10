@@ -145,7 +145,7 @@ fn get_hardware_info() -> HwInfo {
     unsafe {
         let gpu = pci::get_gpu();
         let gpu = CString::from_raw(gpu);
-        gpu_info = gpu.to_owned();
+        gpu_info = gpu;
     }
 
     // Parse uptime
