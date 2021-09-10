@@ -17,8 +17,8 @@ clean:
 	$(CARGO) clean
 
 copy_art:
-	mkdir -p /usr/local/share/nyafetch/
-	cp ./distro_art/* /usr/local/share/nyafetch/
+	mkdir -p $(PREFIX)/local/share/nyafetch/
+	cp ./distro_art/* $(PREFIX)/local/share/nyafetch/
 
 remove_art:
-	rm -rf /usr/local/share/nyafetch/
+	rm -rf $(PREFIX)/local/share/nyafetch/
