@@ -5,7 +5,7 @@ use std::path::Path;
 
 use std::io::prelude::*;
 
-use std::env::{vars, args};
+use std::env::{args, vars};
 
 use std::collections::HashMap;
 
@@ -15,7 +15,11 @@ use chrono::Duration;
 
 use std::process::exit;
 
-const VERSION:&str = "0.1.0-BETA";
+use nyafetch::pci;
+
+use std::ffi::CString;
+
+const VERSION: &str = "0.1.0-BETA";
 
 struct OsInfo {
     id: String,
@@ -29,21 +33,17 @@ struct HwInfo {
     cpu: String,
     uptime: String,
     mem_total: u64,
-    mem_used: u64
+    mem_used: u64,
 }
 
-#[derive(Deserialize)]
-#[derive(Serialize)]
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 enum CaseEnum {
     Lowercase,
     Uppercase,
     Mixed,
 }
 
-#[derive(Deserialize)]
-#[derive(Serialize)]
-#[derive(Debug)]
+#[derive(Deserialize, Serialize, Debug)]
 struct Configuration {
     separator: Option<String>,
     key_color: Option<u8>,
@@ -67,13 +67,14 @@ fn get_distro_info(force_distro: String) -> OsInfo {
     let os_release_file = os_release_file.lines();
     for line in os_release_file {
         if let Some(("ID", id)) = line.split_once("=") {
-            os_info.id = match &force_distro as &str {
+            os_info.id = match force_distro.as_ref() {
                 "" => String::from(id.replace("\"", "")),
                 _ => force_distro,
             };
-            match &os_info.id as &str {
-                "arch" => os_info.nyame = String::from("Arch LinUwUx"),
-                "debian" => os_info.nyame = String::from("Debinyan GNUwU/LinUwU"),
+            match os_info.id.as_ref() {
+                "arch" => os_info.nyame = String::from("Arch Linuwux"),
+                "debian" => os_info.nyame = String::from("Debinyan Linuwux"),
+                "gentoo" => os_info.nyame = String::from("Gentowo Linuwux"),
                 _ => os_info.nyame = String::from("UnknOwOwn :("),
             }
             break;
@@ -85,7 +86,7 @@ fn get_distro_info(force_distro: String) -> OsInfo {
         .expect("There was an error whilst reading /proc/sys/kernel/ostype!");
     match &kernel_release_file.trim().to_lowercase() as &str {
         "linux" => {
-            os_info.kernel_type = String::from("LinUwUx");
+            os_info.kernel_type = String::from("Linuwux");
         }
         "bsd" | "freebsd" | "openbsd" | "netbsd" => {
             os_info.kernel_type = String::from("BSD");
@@ -108,7 +109,10 @@ fn get_hardware_info() -> HwInfo {
         .expect("There was an error whilst reading /proc/cpuinfo!");
     let mut model_name = String::from("UnknOwOwn :(");
     let mut logical_cores = String::new();
-    let lines = cpuinfo_file.lines().map(String::from).collect::<Vec<String>>();
+    let lines = cpuinfo_file
+        .lines()
+        .map(String::from)
+        .collect::<Vec<String>>();
     for line in lines {
         if line == "" {
             break;
@@ -122,13 +126,27 @@ fn get_hardware_info() -> HwInfo {
         }
     }
     // Parse CPU freq
-    fn or_else_zero(_err: std::io::Error) -> std::io::Result<String> { Ok(String::from("0")) }
+    fn or_else_zero(_err: std::io::Error) -> std::io::Result<String> {
+        Ok(String::from("0"))
+    }
     let frequency = fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
         //.expect("There was an error whilst reading sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
         .or_else(or_else_zero)
         .unwrap()
         .trim()
-        .parse::<f32>().unwrap() / 1000_f32 / 1000_f32;
+        .parse::<f32>()
+        .unwrap()
+        / 1000_f32
+        / 1000_f32;
+
+    // Get GPU name
+    let gpu_info;
+
+    unsafe {
+        let gpu = pci::get_gpu();
+        let gpu = CString::from_raw(gpu);
+        gpu_info = gpu.to_owned();
+    }
 
     // Parse uptime
     let uptime = fs::read_to_string("/proc/uptime")
@@ -136,7 +154,8 @@ fn get_hardware_info() -> HwInfo {
         .split_once(" ")
         .unwrap()
         .0
-        .parse::<f32>().unwrap()
+        .parse::<f32>()
+        .unwrap()
         .round() as i64;
 
     let uptime = Duration::seconds(uptime);
@@ -147,34 +166,34 @@ fn get_hardware_info() -> HwInfo {
     }
 
     // Parse /proc/meminfo
-    let mut mem_total:u64 = 0;
-    let mut mem_available:u64 = 0;
+    let mut mem_total: u64 = 0;
+    let mut mem_available: u64 = 0;
     let meminfo = fs::read_to_string("/proc/meminfo")
         .expect("There was an error whilst reading /proc/meminfo");
     for line in meminfo.lines() {
-        let line = line
-            .replace("\t", "")
-            .replace(" ", "");
+        let line = line.replace("\t", "").replace(" ", "");
         //println!("line: {}", line);
         let line = line.split_once(":");
         //println!("{:#?}", line);
         match line {
             Some(("MemTotal", s)) => {
                 let s = s.replace("kB", "");
-                mem_total = s.parse::<u64>()
+                mem_total = s
+                    .parse::<u64>()
                     .expect(&format!("There was an error parsing 'MemTotal:{}'!", s) as &str);
-            },
+            }
             Some(("MemAvailable", s)) => {
                 let s = s.replace("kB", "");
-                mem_available = s.parse::<u64>()
+                mem_available = s
+                    .parse::<u64>()
                     .expect(&format!("There was an error parsing 'MemAvailable:{}'!", s) as &str);
-            },
+            }
             _ => continue,
         }
     }
 
     HwInfo {
-        gpu: String::from("UnknOwOwn :("),
+        gpu: String::from(gpu_info.to_str().unwrap()), //String::from("UnknOwOwn :("),
         cpu: format!("{} ({}) @ {}GHz", model_name, logical_cores, frequency),
         uptime: format!("{} Hours, {} Minutes", hours, minutes),
         mem_total: mem_total / 1024,
@@ -225,12 +244,30 @@ fn print_distro_info(os_info: &OsInfo, hw_info: &HwInfo, config: &Configuration)
         Some(CaseEnum::Uppercase) => "MEMOWORY",
         _ => "MEMOWORY",
     };
-    println!("\x1b[19G{}{}     {}{}  {}", key_color, owos, value_color, separator, os_info.nyame);
-    println!("\x1b[19G{}{}   {}{}  {} {}", key_color, kewnel, value_color, separator, os_info.kernel_type, os_info.kernel_version);
-    println!("\x1b[19G{}{} {}{}  {}", key_color, uwuptime, value_color, separator, hw_info.uptime);
-    println!("\x1b[19G{}{}    {}{}  {}", key_color, cpuuwu, value_color, separator, hw_info.cpu);
-    println!("\x1b[19G{}{}    {}{}  {}", key_color, gpuuwu, value_color, separator, hw_info.gpu);
-    println!("\x1b[19G{}{} {}{}  {}MiB/{}MiB", key_color, memowory, value_color, separator, hw_info.mem_used, hw_info.mem_total);
+    println!(
+        "\x1b[19G{}{}     {}{}  {}",
+        key_color, owos, value_color, separator, os_info.nyame
+    );
+    println!(
+        "\x1b[19G{}{}   {}{}  {} {}",
+        key_color, kewnel, value_color, separator, os_info.kernel_type, os_info.kernel_version
+    );
+    println!(
+        "\x1b[19G{}{} {}{}  {}",
+        key_color, uwuptime, value_color, separator, hw_info.uptime
+    );
+    println!(
+        "\x1b[19G{}{}    {}{}  {}",
+        key_color, cpuuwu, value_color, separator, hw_info.cpu
+    );
+    println!(
+        "\x1b[19G{}{}    {}{}  {}",
+        key_color, gpuuwu, value_color, separator, hw_info.gpu
+    );
+    println!(
+        "\x1b[19G{}{} {}{}  {}MiB/{}MiB",
+        key_color, memowory, value_color, separator, hw_info.mem_used, hw_info.mem_total
+    );
     println!();
     println!();
     println!();
@@ -287,17 +324,21 @@ fn create_config_file(file: &std::path::Path) -> Result<Configuration, String> {
     let config = create_default_config();
     let config_str = toml::to_string_pretty(&config).unwrap();
     match File::create(file) {
-        Ok(mut file) => {
-            match write!(file, "{}", config_str) {
-                Ok(_) => (),
-                Err(err) => {
-                    return Err(format!("There was an error whilst writing to the config file! {}", err));
-                },
+        Ok(mut file) => match write!(file, "{}", config_str) {
+            Ok(_) => (),
+            Err(err) => {
+                return Err(format!(
+                    "There was an error whilst writing to the config file! {}",
+                    err
+                ));
             }
         },
         Err(err) => {
-            return Err(format!("There was an error whilst writing to the config file! {}", err));
-        },
+            return Err(format!(
+                "There was an error whilst writing to the config file! {}",
+                err
+            ));
+        }
     }
     Ok(config)
 }
@@ -314,54 +355,66 @@ fn parse_config() -> Configuration {
         home.push_str("/config.toml");
         let config_file = Path::new(&home);
         if config_file.exists() && config_file.is_file() {
-            let config_file = fs::read_to_string(config_file)
-                .expect("There was an error whilst parsing config!");
+            let config_file =
+                fs::read_to_string(config_file).expect("There was an error whilst parsing config!");
             let mut config = toml::from_str::<Configuration>(&config_file as &str)
                 .expect("There was an error whilst parsing config!");
-            config.separator = Some(config.separator.unwrap_or(String::from("->")).replace("\\t", "\t"));
+            config.separator = Some(
+                config
+                    .separator
+                    .unwrap_or(String::from("->"))
+                    .replace("\\t", "\t"),
+            );
             return config;
         } else {
             return create_config_file(config_file).unwrap();
         }
     } else {
         match fs::create_dir_all(config_folder) {
-            Ok(_) => {
-                create_config_file(Path::new(&format!("{}/config.toml", config_folder.to_str().unwrap()))).unwrap()
-            },
+            Ok(_) => create_config_file(Path::new(&format!(
+                "{}/config.toml",
+                config_folder.to_str().unwrap()
+            )))
+            .unwrap(),
             Err(err) => {
-                println!("There was an error whilst writing to the config file! {}", err);
+                println!(
+                    "There was an error whilst writing to the config file! {}",
+                    err
+                );
                 create_default_config()
-            },
+            }
         }
     }
 }
-
 
 fn main() {
     let mut distro = String::new();
     let mut args = args();
     args.next().unwrap();
     for arg in args {
-        match &arg as &str {
+        match arg.as_ref() {
             "--help" => {
                 println!("Available arguments");
                 println!("--help\t\t\t\tShows this menu");
                 println!("--version\t\t\tShows info about the current nyafetch version");
-                println!("-d=<distro>|--distro=<distro>\tForcefully show <distro>'s ascii art or 'unknown' if not recognised");
+                println!("-d=<distro>|--distro=<distro>\tDisplay <distro>'s ascii art or 'unknown' if not recognised");
                 exit(0);
-            },
+            }
             "--version" => {
                 println!("nyafetch v{}", VERSION);
                 exit(0);
-            },
+            }
             s => match s.split_once("=") {
                 Some(("--distro", s)) | Some(("-d", s)) => {
                     distro = String::from(s);
-                },
+                }
                 _ => {
-                    println!("Invalid argument '{}'!\nFor a list of arguments use 'nyafetch --help'", s);
+                    println!(
+                        "Invalid argument '{}'!\nFor a list of arguments use 'nyafetch --help'",
+                        s
+                    );
                     exit(1);
-                },
+                }
             },
         }
     }
