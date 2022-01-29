@@ -1,5 +1,5 @@
 #pragma once
-#include <linux/types.h>
+#include <pci/types.h>
 
 char *get_gpu();
-char *parse_vendor(__u16 vendor_id);
+char *parse_vendor(u16 vendor_id);

@@ -1,31 +1,33 @@
+use chrono::Duration;
+use nyafetch::pci;
+use serde_derive::{Deserialize, Serialize};
+use std::collections::HashMap;
+use std::env::{args, vars};
+use std::ffi::CString;
 use std::fs;
 use std::fs::File;
-
-use std::path::Path;
-
 use std::io::prelude::*;
-
-use std::env::{args, vars};
-
-use std::collections::HashMap;
-
-use serde_derive::{Deserialize, Serialize};
-
-use chrono::Duration;
-
+use std::path::Path;
 use std::process::exit;
 
-use nyafetch::pci;
-
-use std::ffi::CString;
-
-const VERSION: &str = "0.1.0-BETA";
+const VERSION: &str = "1.0.0";
 
 struct OsInfo {
     id: String,
     nyame: String,
     kernel_type: String,
     kernel_version: String,
+}
+
+impl Default for OsInfo {
+    fn default() -> Self {
+        OsInfo {
+            nyame: String::from("unknown"),
+            id: String::from("unknown"),
+            kernel_type: String::from(""),
+            kernel_version: String::from(""),
+        }
+    }
 }
 
 struct HwInfo {
@@ -50,27 +52,43 @@ struct Configuration {
     value_color: Option<u8>,
     art_color: Option<u8>,
     case: Option<CaseEnum>,
-    //value_case: Option<CaseEnum>,
 }
 
-fn get_distro_info(force_distro: String) -> OsInfo {
-    let mut os_info = OsInfo {
-        nyame: String::from("unknown"),
-        id: String::from("unknown"),
-        kernel_type: String::from(""),
-        kernel_version: String::from(""),
-    };
+impl Default for Configuration {
+    fn default() -> Self {
+        Configuration {
+            separator: Some(String::from("->")),
+            key_color: Some(213),
+            value_color: Some(255),
+            art_color: Some(213),
+            case: Some(CaseEnum::Mixed),
+        }
+    }
+}
+
+fn get_distro_info() -> OsInfo {
+    let mut os_info = OsInfo::default();
 
     // Parse /etc/os-release
-    let os_release_file = fs::read_to_string("/etc/os-release")
-        .expect("There was an error whilst reading /etc/os-release!");
-    let os_release_file = os_release_file.lines();
-    for line in os_release_file {
-        if let Some(("ID", id)) = line.split_once("=") {
-            os_info.id = match force_distro.as_ref() {
-                "" => String::from(id.replace("\"", "")),
-                _ => force_distro,
-            };
+    let release_file = match fs::read_to_string("/etc/os-release") {
+        Ok(file) => file,
+        Err(err) => {
+            if let Ok(file) = fs::read_to_string("/etc/lsb-release") {
+                file
+            } else {
+                //panic!("Failed to read /etc/os-release and /etc/lsb-release: {}", err)
+                eprintln!(
+                    "Failed to read /etc/os-release and /etc/lsb-release: {}",
+                    err
+                );
+                String::new()
+            }
+        }
+    };
+    let release_file = release_file.lines();
+    for line in release_file {
+        if let Some(("ID" | "DISTRIB_ID", id)) = line.split_once("=") {
+            os_info.id = String::from(id.replace("\"", "")).to_lowercase();
             match os_info.id.as_ref() {
                 "arch" => os_info.nyame = String::from("Arch Linuwux"),
                 "debian" => os_info.nyame = String::from("Debinyan Linuwux"),
@@ -84,10 +102,11 @@ fn get_distro_info(force_distro: String) -> OsInfo {
     // Parse /proc/sys/kernel/ostype
     let kernel_release_file = fs::read_to_string("/proc/sys/kernel/ostype")
         .expect("There was an error whilst reading /proc/sys/kernel/ostype!");
-    match &kernel_release_file.trim().to_lowercase() as &str {
+    match kernel_release_file.trim().to_lowercase().as_ref() {
         "linux" => {
             os_info.kernel_type = String::from("Linuwux");
         }
+        // I have no idea if this even works
         "bsd" | "freebsd" | "openbsd" | "netbsd" => {
             os_info.kernel_type = String::from("BSD");
         }
@@ -121,15 +140,14 @@ fn get_hardware_info() -> HwInfo {
         match line.split_once(":") {
             Some(("model name", s)) => model_name = String::from(s.trim()),
             Some(("siblings", s)) => logical_cores = String::from(s.trim()),
-            //Some(("cpu MHz", s)) => frequency = (s.trim().parse::<f32>().unwrap() / 1000_f32).to_string(),
             _ => (),
         }
     }
     // Parse CPU freq
     fn or_else_zero(_err: std::io::Error) -> std::io::Result<String> {
-        Ok(String::from("0"))
+        Ok(String::from("0.00"))
     }
-    let frequency = fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
+    let frequency = fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq")
         //.expect("There was an error whilst reading sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
         .or_else(or_else_zero)
         .unwrap()
@@ -172,21 +190,19 @@ fn get_hardware_info() -> HwInfo {
         .expect("There was an error whilst reading /proc/meminfo");
     for line in meminfo.lines() {
         let line = line.replace("\t", "").replace(" ", "");
-        //println!("line: {}", line);
         let line = line.split_once(":");
-        //println!("{:#?}", line);
         match line {
             Some(("MemTotal", s)) => {
                 let s = s.replace("kB", "");
                 mem_total = s
                     .parse::<u64>()
-                    .expect(&format!("There was an error parsing 'MemTotal:{}'!", s) as &str);
+                    .expect(format!("There was an error parsing 'MemTotal:{}'!", s).as_ref());
             }
             Some(("MemAvailable", s)) => {
                 let s = s.replace("kB", "");
                 mem_available = s
                     .parse::<u64>()
-                    .expect(&format!("There was an error parsing 'MemAvailable:{}'!", s) as &str);
+                    .expect(format!("There was an error parsing 'MemAvailable:{}'!", s).as_ref());
             }
             _ => continue,
         }
@@ -194,7 +210,7 @@ fn get_hardware_info() -> HwInfo {
 
     HwInfo {
         gpu: String::from(gpu_info.to_str().unwrap()), //String::from("UnknOwOwn :("),
-        cpu: format!("{} ({}) @ {}GHz", model_name, logical_cores, frequency),
+        cpu: format!("{} ({}) @ {:0<4}GHz", model_name, logical_cores, frequency),
         uptime: format!("{} Hours, {} Minutes", hours, minutes),
         mem_total: mem_total / 1024,
         mem_used: (mem_total - mem_available) / 1024,
@@ -275,53 +291,27 @@ fn print_distro_info(os_info: &OsInfo, hw_info: &HwInfo, config: &Configuration)
     print!("\x1b[10A");
 }
 
-fn print_ascii_art(info: &OsInfo, config: &Configuration) {
-    let nyafetch_folder = Path::new("/usr/local/share/nyafetch/");
-    if nyafetch_folder.exists() && nyafetch_folder.is_dir() {
-        let art_file = fs::read_to_string(format!("/usr/local/share/nyafetch/{}", info.id));
-        if let Ok(art) = art_file {
-            print!("\x1b[38;5;{}m", config.art_color.unwrap_or(255));
-            for line in art.lines() {
-                println!("\x1b[0G{}", line);
-            }
-            print!("\x1b[0m");
-            return;
-        }
+fn print_ascii_art(info: &OsInfo, config: &Configuration, force_distro: Option<String>) {
+    let mut distro_id = info.id.clone();
+    if let Some(distro) = force_distro {
+        distro_id = distro;
     }
-    /*
-    ___
-    |__ \
-       ) |
-      / /
-     |_|
-     (_)
-    */
-    print!("\x1b[38;5;{}m", config.art_color.unwrap_or(255));
-    println!("\x1b[0G#################");
-    println!("\x1b[0G#    ___        #");
-    println!("\x1b[0G#    |__ \\      #");
-    println!("\x1b[0G#       ) |     #");
-    println!("\x1b[0G#       / /     #");
-    println!("\x1b[0G#      |_|      #");
-    println!("\x1b[0G#      (_)      #");
-    println!("\x1b[0G#               #");
-    println!("\x1b[0G#################");
-    print!("\x1b[0m");
-}
+    let art = match distro_id.as_ref() {
+        "arch" => include_str!("../distro_art/arch").to_string(),
+        "debian" => include_str!("../distro_art/debian").to_string(),
+        _ => include_str!("../distro_art/unknown").to_string(),
+    };
 
-fn create_default_config() -> Configuration {
-    Configuration {
-        separator: Some(String::from("->")),
-        key_color: Some(213),
-        value_color: Some(255),
-        art_color: Some(213),
-        case: Some(CaseEnum::Mixed),
-        //value_case: Some(CaseEnum::Mixed),
+    print!("\x1b[38;5;{}m", config.art_color.unwrap_or(255));
+    for line in art.lines() {
+        println!("\x1b[0G{}", line);
     }
+    print!("\x1b[0m");
+    return;
 }
 
 fn create_config_file(file: &std::path::Path) -> Result<Configuration, String> {
-    let config = create_default_config();
+    let config = Configuration::default();
     let config_str = toml::to_string_pretty(&config).unwrap();
     match File::create(file) {
         Ok(mut file) => match write!(file, "{}", config_str) {
@@ -357,7 +347,7 @@ fn parse_config() -> Configuration {
         if config_file.exists() && config_file.is_file() {
             let config_file =
                 fs::read_to_string(config_file).expect("There was an error whilst parsing config!");
-            let mut config = toml::from_str::<Configuration>(&config_file as &str)
+            let mut config = toml::from_str::<Configuration>(config_file.as_ref())
                 .expect("There was an error whilst parsing config!");
             config.separator = Some(
                 config
@@ -381,14 +371,14 @@ fn parse_config() -> Configuration {
                     "There was an error whilst writing to the config file! {}",
                     err
                 );
-                create_default_config()
+                Configuration::default()
             }
         }
     }
 }
 
 fn main() {
-    let mut distro = String::new();
+    let mut distro = None;
     let mut args = args();
     args.next().unwrap();
     for arg in args {
@@ -406,7 +396,7 @@ fn main() {
             }
             s => match s.split_once("=") {
                 Some(("--distro", s)) | Some(("-d", s)) => {
-                    distro = String::from(s);
+                    distro = Some(String::from(s));
                 }
                 _ => {
                     println!(
@@ -420,9 +410,8 @@ fn main() {
     }
 
     let config = parse_config();
-    let os_info = get_distro_info(distro);
+    let os_info = get_distro_info();
     let hw_info = get_hardware_info();
     print_distro_info(&os_info, &hw_info, &config);
-    print_ascii_art(&os_info, &config);
-    //println!("{:#?}", config);
+    print_ascii_art(&os_info, &config, distro);
 }

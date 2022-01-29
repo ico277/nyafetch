@@ -1,11 +1,13 @@
-#include <linux/types.h>
 #include <pci/pci.h>
+#include <pci/types.h>
 #include <stdio.h>
 #include <stdlib.h>
 
-char *parse_vendor(__u16 vendor_id) {
+char *parse_vendor(u16 vendor_id)
+{
     // printf("%d\n", vendor_id);
-    switch (vendor_id) {
+    switch (vendor_id)
+    {
     case 0x0300:
         return "AMD";
         break;
@@ -21,7 +23,8 @@ char *parse_vendor(__u16 vendor_id) {
     }
 }
 
-char *get_gpu() {
+char *get_gpu()
+{
     struct pci_access *pciaccess;
     struct pci_dev *dev;
     char name_buffer[1024];
@@ -31,10 +34,12 @@ char *get_gpu() {
     pci_init(pciaccess);
     pci_scan_bus(pciaccess);
 
-    for (dev = pciaccess->devices; dev; dev = dev->next) {
-        pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_BASES | PCI_FILL_CLASS);
+    for (dev = pciaccess->devices; dev; dev = dev->next)
+    {
+        pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_CLASS);
         // printf(" (%s)\n", name_buffer);
-        if (dev->device_class == 0x0300) {
+        if (dev->device_class == 0x0300)
+        {
             // printf("owo\n");
             pci_lookup_name(pciaccess, name_buffer, sizeof(name_buffer),
                             PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);

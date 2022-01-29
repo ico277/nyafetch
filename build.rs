@@ -5,20 +5,24 @@ use std::env;
 use std::path::PathBuf;
 
 fn main() {
-    println!("cargo:rustc-link-lib=pci");
+    // Tell cargo to invalidate the built crate whenever any of the
+    // c files changed.
+    println!("cargo:rerun-if-changed=src/c/get_gpu.c");
+
+    // Compile get_cpu.c
     cc::Build::new()
         .file("src/c/get_gpu.c")
         .compile("libget_gpu.so");
+    
+    // Link libs
+    println!("cargo:rustc-link-lib=pci");
+    println!("cargo:rustc-link-lib=libget_gpu.so");
 
-    // The bindgen::Builder is the main entry point
-    // to bindgen, and lets you build up options for
-    // the resulting bindings.
     let bindings = bindgen::Builder::default()
-        // The input header we would like to generate
-        // bindings for.
+        // The input header
         .header("wrapper.h")
         // Tell cargo to invalidate the built crate whenever any of the
-        // included header files changed.
+        // header files changed.
         .parse_callbacks(Box::new(bindgen::CargoCallbacks))
         // Finish the builder and generate the bindings.
         .generate()

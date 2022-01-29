@@ -1,24 +1,20 @@
 PREFIX = /usr
 CARGO = cargo
 
-install: copy_art
-	$(CARGO) install --path . --root $(PREFIX)
+install:
+	$(CARGO) install --path .
 
-uninstall: remove_art
-	$(CARGO) uninstall -p nyafetch --root $(PREFIX)
+uninstall:
+	$(CARGO) uninstall -p nyafetch
+
+install_global: build
+	cp target/release/nyafetch ${PREFIX}/bin/
+
+uninstall_global:
+	rm ${PREFIX}/bin/nyafetch
 
 build:
 	$(CARGO) build --release
 
-run: copy_art
-	$(CARGO) run --release
-
 clean:
 	$(CARGO) clean
-
-copy_art:
-	mkdir -p $(PREFIX)/local/share/nyafetch/
-	cp ./distro_art/* $(PREFIX)/local/share/nyafetch/
-
-remove_art:
-	rm -rf $(PREFIX)/local/share/nyafetch/
