@@ -6,7 +6,7 @@
 char *parse_vendor(u16 vendor_id)
 {
     // printf("%d\n", vendor_id);
-    switch (vendor_id)
+    /*switch (vendor_id)
     {
     case 0x0300:
         return "AMD";
@@ -17,6 +17,13 @@ char *parse_vendor(u16 vendor_id)
     case 0x10de:
         return "NVIDIA";
         break;
+    default:
+        return "";
+        break;
+    }*/
+    switch (vendor_id)
+    {
+//%REPLACE%
     default:
         return "";
         break;
