@@ -10,7 +10,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.0.0";
+const VERSION: &str = "1.2.0";
 
 struct OsInfo {
     id: String,
@@ -298,6 +298,7 @@ fn print_ascii_art(info: &OsInfo, config: &Configuration, force_distro: Option<S
     }
     let art = match distro_id.as_ref() {
         "arch" => include_str!("../distro_art/arch").to_string(),
+        "artix" => include_str!("../distro_art/artix").to_string(),
         "debian" => include_str!("../distro_art/debian").to_string(),
         _ => include_str!("../distro_art/unknown").to_string(),
     };
