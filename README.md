@@ -2,10 +2,11 @@
 A neofetch alike program that shows hardware and distro information written in rust.
 # Compiling from source
 ## Dependencies
- libpci, clang, rust (for rust to compile c)
+ rust, libpci, clang (for rust to compile c)
  
  ### Linux
 **Arch(pacman):** pciutils clang
+
 **Debian(apt):** libpci-dev clang
 
 ### Windows
