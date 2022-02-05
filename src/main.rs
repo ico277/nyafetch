@@ -10,7 +10,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.2.0";
+const VERSION: &str = "1.2.1";
 
 struct OsInfo {
     id: String,
@@ -89,12 +89,13 @@ fn get_distro_info() -> OsInfo {
     for line in release_file {
         if let Some(("ID" | "DISTRIB_ID", id)) = line.split_once("=") {
             os_info.id = String::from(id.replace("\"", "")).to_lowercase();
-            match os_info.id.as_ref() {
-                "arch" => os_info.nyame = String::from("Arch Linuwux"),
-                "debian" => os_info.nyame = String::from("Debinyan Linuwux"),
-                "gentoo" => os_info.nyame = String::from("Gentowo Linuwux"),
-                _ => os_info.nyame = String::from("UnknOwOwn :("),
-            }
+            os_info.nyame = match os_info.id.as_ref() {
+                "arch" => String::from("Nyarch Linuwux"),
+                "artix" => String::from("Awartux Linuwux"),
+                "debian" => String::from("Debinyan Linuwux"),
+                "gentoo" => String::from("Gentowo Linuwux"),
+                _ => String::from("UnknOwOwn :("),
+            };
             break;
         }
     }
