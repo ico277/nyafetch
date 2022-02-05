@@ -16,7 +16,7 @@ More instructions as to how to install rust [*here*](https://www.rust-lang.org/t
 ## Compilation
 There are 2 ways to install Nyafetch
 1. Per user in `~/.cargo/bin`
-2. Globally in `/usr/bin`
+2. Globally in `/usr/bin` (changable using `make <subcommand> PREFIX=<custom prefix>`)
 
 ### 1. Per User
 ```bash
@@ -24,6 +24,16 @@ $ make install
 ```
 ### 2. Globally
 ```bash
-# make install_global
+# make install_global PREFIX=<prefix here>
 ```
-note: Global install needs root permission
+note: Global install might require root permission
+
+## Uninstall
+```bash
+$ make uninstall
+```
+### 2. Globally
+```bash
+# make uninstall_global PREFIX=<prefix here>
+```
+note: Global uninstall might require root permission
