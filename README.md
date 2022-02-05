@@ -29,6 +29,7 @@ $ make install
 note: Global install might require root permission
 
 ## Uninstall
+### 1. Per User
 ```bash
 $ make uninstall
 ```
