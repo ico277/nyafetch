@@ -10,7 +10,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.2.1";
+const VERSION: &str = "1.3.0";
 
 struct OsInfo {
     id: String,
@@ -94,6 +94,7 @@ fn get_distro_info() -> OsInfo {
                 "artix" => String::from("Awartux Linuwux"),
                 "debian" => String::from("Debinyan Linuwux"),
                 "gentoo" => String::from("Gentowo Linuwux"),
+                "endeavouros" => String::from("EndeavOwOurOwOS"),
                 _ => String::from("UnknOwOwn :("),
             };
             break;
@@ -301,6 +302,7 @@ fn print_ascii_art(info: &OsInfo, config: &Configuration, force_distro: Option<S
         "arch" => include_str!("../distro_art/arch").to_string(),
         "artix" => include_str!("../distro_art/artix").to_string(),
         "debian" => include_str!("../distro_art/debian").to_string(),
+        "endeavouros" => include_str!("../distro_art/endeavouros").to_string(),
         _ => include_str!("../distro_art/unknown").to_string(),
     };
 
