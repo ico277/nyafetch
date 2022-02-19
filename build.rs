@@ -1,5 +1,6 @@
 extern crate bindgen;
 extern crate cc;
+extern crate reqwest;
 
 use reqwest::blocking;
 use std::collections::HashMap;
@@ -45,12 +46,11 @@ fn main() {
         };
     }
     // Generate PCI IDs
-    let mut c_file = fs::read_to_string("src/c/get_gpu.c.gen").unwrap();
+    let mut c_file = fs::read_to_string("src/c/get_gpu_gen.c").unwrap();
     let mut generated = String::new();
     for key in vendors.keys() {
         generated += format!("    case 0x{}:\n", key).as_ref();
         generated += format!("        return \"{}\";\n", vendors.get(key).unwrap()).as_ref();
-        generated += "        break;\n";
     }
     c_file = c_file.replace("//%REPLACE%", generated.as_ref());
     let mut file = File::create("src/c/get_gpu.c").expect("Unable to create file src/c/get_gpu.c");
@@ -80,5 +80,4 @@ fn main() {
     bindings
         .write_to_file(out_path.join("bindings.rs"))
         .expect("Couldn't write bindings!");
-    
 }

@@ -10,7 +10,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.3.0";
+const VERSION: &str = "1.4.0";
 
 struct OsInfo {
     id: String,
@@ -31,7 +31,7 @@ impl Default for OsInfo {
 }
 
 struct HwInfo {
-    gpu: String,
+    gpus: Vec<String>,
     cpu: String,
     uptime: String,
     mem_total: u64,
@@ -160,12 +160,16 @@ fn get_hardware_info() -> HwInfo {
         / 1000_f32;
 
     // Get GPU name
-    let gpu_info;
+    let gpus;
 
     unsafe {
-        let gpu = pci::get_gpu();
-        let gpu = CString::from_raw(gpu);
-        gpu_info = gpu;
+        let gpu_arr = pci::get_gpu();
+        let gpu_arr = std::slice::from_raw_parts_mut(gpu_arr, pci::get_gpu_count() as usize);
+        let mut gpu_vec = vec![];
+        for i in 0..pci::get_gpu_count() as usize {
+            gpu_vec.push(CString::from_raw(gpu_arr[i]).into_string().unwrap());
+        }
+        gpus = gpu_vec;
     }
 
     // Parse uptime
@@ -211,7 +215,7 @@ fn get_hardware_info() -> HwInfo {
     }
 
     HwInfo {
-        gpu: String::from(gpu_info.to_str().unwrap()), //String::from("UnknOwOwn :("),
+        gpus: gpus, //String::from("UnknOwOwn :("),
         cpu: format!("{} ({}) @ {:0<4}GHz", model_name, logical_cores, frequency),
         uptime: format!("{} Hours, {} Minutes", hours, minutes),
         mem_total: mem_total / 1024,
@@ -278,10 +282,12 @@ fn print_distro_info(os_info: &OsInfo, hw_info: &HwInfo, config: &Configuration)
         "\x1b[19G{}{}    {}{}  {}",
         key_color, cpuuwu, value_color, separator, hw_info.cpu
     );
-    println!(
-        "\x1b[19G{}{}    {}{}  {}",
-        key_color, gpuuwu, value_color, separator, hw_info.gpu
-    );
+    for gpu in &hw_info.gpus {
+        println!(
+            "\x1b[19G{}{}    {}{}  {}",
+            key_color, gpuuwu, value_color, separator, gpu
+        );
+    }
     println!(
         "\x1b[19G{}{} {}{}  {}MiB/{}MiB",
         key_color, memowory, value_color, separator, hw_info.mem_used, hw_info.mem_total
