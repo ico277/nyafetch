@@ -10,7 +10,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.4.0";
+const VERSION: &str = "1.4.1";
 
 struct OsInfo {
     id: String,

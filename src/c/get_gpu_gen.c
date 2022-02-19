@@ -47,18 +47,23 @@ char **get_gpu()
     for (dev = pciaccess->devices; dev; dev = dev->next)
     {
         pci_fill_info(dev, PCI_FILL_IDENT | PCI_FILL_CLASS);
-        if (dev->device_class == 0x0300)
-        {
-            char *name = (char *)malloc(2048 * sizeof(char));
-            char name_buffer[1024];
-            pci_lookup_name(pciaccess, name_buffer, sizeof(name_buffer),
-                            PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
-            sprintf(name, "%s %s", parse_vendor(dev->vendor_id),
-                    name_buffer);
-            if (i >= 512)
-                break;
-            names[i] = name;
-            i++;
+        switch (dev->device_class) {
+            case 0x3080:
+            case 0x0301:
+            case 0x0302:
+            case 0x0300:
+                char *name = (char *)malloc(2048 * sizeof(char));
+                char name_buffer[1024];
+                pci_lookup_name(pciaccess, name_buffer, sizeof(name_buffer),
+                                PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+                sprintf(name, "%s %s", parse_vendor(dev->vendor_id),
+                        name_buffer);
+                if (i >= 512)
+                    break;
+                names[i] = name;
+                i++;
+            default:
+                continue;
         }
     }
     pci_cleanup(pciaccess);
