@@ -11,7 +11,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.5.0";
+const VERSION: &str = "1.5.1";
 
 struct OsInfo {
     id: String,
@@ -367,8 +367,8 @@ fn print_distro_info(os_info: &OsInfo, hw_info: &HwInfo, config: &Configuration)
             "{}{}    {}{}  {}",
             key_color, gpuuwu, value_color, separator, gpu
         );
+        print!("\x1b[15C");
     }
-    print!("\x1b[15C");
     println!(
         "{}{} {}{}  {}MiB/{}MiB",
         key_color, memowory, value_color, separator, hw_info.mem_used, hw_info.mem_total
