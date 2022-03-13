@@ -21,7 +21,7 @@ Either download a build [*here*](https://github.com/ico277/nyafetch/releases/lat
 
 ### Building
 ```bash
-$ make buld
+$ make build
 ```
 ### Installing
 ```bash
