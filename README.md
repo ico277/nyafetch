@@ -14,28 +14,17 @@ A neofetch alike program that shows hardware and distro information written in r
 
 More instructions as to how to install rust [*here*](https://www.rust-lang.org/tools/install).
 
+## Installation
+Either download a build [*here*](https://github.com/ico277/nyafetch/releases/latest) or compile it yourself.
+
 ## Compilation
-There are 2 ways to install Nyafetch
-1. Per user in `~/.cargo/bin`
-2. Globally in `/usr/bin` (changable using `make <subcommand> PREFIX=<custom prefix>`)
 
-### 1. Per User
+### Building
 ```bash
-$ make install
+$ make buld
 ```
-### 2. Globally
+### Installing
 ```bash
-# make install_global PREFIX=<prefix here>
+# make install
 ```
-note: Global install might require root permission
-
-## Uninstall
-### 1. Per User
-```bash
-$ make uninstall
-```
-### 2. Globally
-```bash
-# make uninstall_global PREFIX=<prefix here>
-```
-note: Global uninstall might require root permission
+Note: You can use `make install PREFIX=<prefix>` to change the prefix.

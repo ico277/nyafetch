@@ -2,6 +2,7 @@ use chrono::Duration;
 use nyafetch::pci;
 use serde_derive::{Deserialize, Serialize};
 use std::collections::HashMap;
+use std::env::var;
 use std::env::{args, vars};
 use std::ffi::CString;
 use std::fs;
@@ -10,13 +11,16 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.4.1";
+const VERSION: &str = "1.5.0";
 
 struct OsInfo {
     id: String,
     nyame: String,
     kernel_type: String,
     kernel_version: String,
+    hostname: String,
+    user: String,
+    art_lines: usize,
 }
 
 impl Default for OsInfo {
@@ -26,6 +30,9 @@ impl Default for OsInfo {
             id: String::from("unknown"),
             kernel_type: String::from(""),
             kernel_version: String::from(""),
+            hostname: String::from("unknown"),
+            user: String::from("unknown"),
+            art_lines: 10,
         }
     }
 }
@@ -36,6 +43,18 @@ struct HwInfo {
     uptime: String,
     mem_total: u64,
     mem_used: u64,
+}
+
+impl Default for HwInfo {
+    fn default() -> Self {
+        HwInfo {
+            gpus: vec![],
+            cpu: String::from("unknown"),
+            uptime: String::from("unknown"),
+            mem_total: 0,
+            mem_used: 0,
+        }
+    }
 }
 
 #[derive(Deserialize, Serialize, Debug)]
@@ -121,15 +140,28 @@ fn get_distro_info() -> OsInfo {
             .expect("There was an error whilst reading /proc/sys/kernel/osrelease!")
             .trim(),
     );
+
+    os_info.hostname = String::from(
+        fs::read_to_string("/proc/sys/kernel/hostname")
+            .expect("There was an error whilst reading /proc/sys/kernel/hostname!")
+            .trim(),
+    );
+
+    os_info.user = match var("USER") {
+        Ok(s) => s,
+        Err(_) => os_info.user,
+    };
     os_info
 }
 
 fn get_hardware_info() -> HwInfo {
+    let mut hwinfo = HwInfo::default();
+
     // Parse /proc/cpuinfo
     let cpuinfo_file = fs::read_to_string("/proc/cpuinfo")
         .expect("There was an error whilst reading /proc/cpuinfo!");
-    let mut model_name = String::from("UnknOwOwn :(");
-    let mut logical_cores = String::new();
+    let mut cpu_model_name = String::from("UnknOwOwn :(");
+    let mut cpu_logical_cores = String::new();
     let lines = cpuinfo_file
         .lines()
         .map(String::from)
@@ -140,28 +172,34 @@ fn get_hardware_info() -> HwInfo {
         }
         let line = line.replace("\t", "");
         match line.split_once(":") {
-            Some(("model name", s)) => model_name = String::from(s.trim()),
-            Some(("siblings", s)) => logical_cores = String::from(s.trim()),
+            Some(("model name", s)) => cpu_model_name = String::from(s.trim()),
+            Some(("siblings", s)) => cpu_logical_cores = String::from(s.trim()),
             _ => (),
         }
     }
-    // Parse CPU freq
-    fn or_else_zero(_err: std::io::Error) -> std::io::Result<String> {
-        Ok(String::from("0.00"))
+
+    if cpu_model_name.chars().any(|v| v == '@') {
+        hwinfo.cpu = cpu_model_name.replace("@", format!("({}) @", cpu_logical_cores).as_ref())
+    } else {
+        fn or_else_zero(_err: std::io::Error) -> std::io::Result<String> {
+            Ok(String::from("0.00"))
+        }
+        let frequency = fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq")
+            //.expect("There was an error whilst reading sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
+            .or_else(or_else_zero)
+            .unwrap()
+            .trim()
+            .parse::<f32>()
+            .unwrap()
+            / 1000_f32
+            / 1000_f32;
+        hwinfo.cpu = format!(
+            "{} ({}) @ {:0<4}GHz",
+            cpu_model_name, cpu_logical_cores, frequency
+        );
     }
-    let frequency = fs::read_to_string("/sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq")
-        //.expect("There was an error whilst reading sys/devices/system/cpu/cpu0/cpufreq/bios_limit")
-        .or_else(or_else_zero)
-        .unwrap()
-        .trim()
-        .parse::<f32>()
-        .unwrap()
-        / 1000_f32
-        / 1000_f32;
 
     // Get GPU name
-    let gpus;
-
     unsafe {
         let gpu_arr = pci::get_gpu();
         let gpu_arr = std::slice::from_raw_parts_mut(gpu_arr, pci::get_gpu_count() as usize);
@@ -169,7 +207,9 @@ fn get_hardware_info() -> HwInfo {
         for i in 0..pci::get_gpu_count() as usize {
             gpu_vec.push(CString::from_raw(gpu_arr[i]).into_string().unwrap());
         }
-        gpus = gpu_vec;
+        if gpu_vec.len() > 0 {
+            hwinfo.gpus = gpu_vec;
+        }
     }
 
     // Parse uptime
@@ -188,6 +228,7 @@ fn get_hardware_info() -> HwInfo {
     if hours != 0 {
         minutes = minutes - (hours * 60);
     }
+    hwinfo.uptime = format!("{} Hours, {} Minutes", hours, minutes);
 
     // Parse /proc/meminfo
     let mut mem_total: u64 = 0;
@@ -213,13 +254,35 @@ fn get_hardware_info() -> HwInfo {
             _ => continue,
         }
     }
+    hwinfo.mem_total = mem_total / 1024;
+    hwinfo.mem_used = (mem_total - mem_available) / 1024;
 
-    HwInfo {
-        gpus: gpus, //String::from("UnknOwOwn :("),
-        cpu: format!("{} ({}) @ {:0<4}GHz", model_name, logical_cores, frequency),
-        uptime: format!("{} Hours, {} Minutes", hours, minutes),
-        mem_total: mem_total / 1024,
-        mem_used: (mem_total - mem_available) / 1024,
+    hwinfo
+}
+
+fn print_ascii_art(info: &mut OsInfo, config: &Configuration, force_distro: Option<String>) {
+    let mut distro_id = info.id.clone();
+    if let Some(distro) = force_distro {
+        distro_id = distro;
+    }
+    let art = match distro_id.as_ref() {
+        "arch" => include_str!("../distro_art/arch").to_string(),
+        "artix" => include_str!("../distro_art/artix").to_string(),
+        "debian" => include_str!("../distro_art/debian").to_string(),
+        "endeavouros" => include_str!("../distro_art/endeavouros").to_string(),
+        _ => include_str!("../distro_art/unknown").to_string(),
+    };
+
+    info.art_lines = art.lines().count();
+
+    println!();
+
+    for line in art.lines() {
+        println!(
+            "\x1b[38;5;{}m{}\x1b[0m",
+            config.art_color.unwrap_or(255),
+            line
+        );
     }
 }
 
@@ -266,58 +329,53 @@ fn print_distro_info(os_info: &OsInfo, hw_info: &HwInfo, config: &Configuration)
         Some(CaseEnum::Uppercase) => "MEMOWORY",
         _ => "MEMOWORY",
     };
+    print!("\x1b[{}F", os_info.art_lines + 1);
+    print!("\x1b[15C");
+
     println!(
-        "\x1b[19G{}{}     {}{}  {}",
+        "{}{}{}@{}{}",
+        value_color, os_info.user, key_color, value_color, os_info.hostname
+    );
+    print!("\x1b[15C");
+    for _ in 0..(os_info.user.chars().count() + os_info.hostname.chars().count() + 1) {
+        print!("-");
+    }
+    println!();
+    print!("\x1b[15C");
+    println!(
+        "{}{}     {}{}  {}",
         key_color, owos, value_color, separator, os_info.nyame
     );
+    print!("\x1b[15C");
     println!(
-        "\x1b[19G{}{}   {}{}  {} {}",
+        "{}{}   {}{}  {} {}",
         key_color, kewnel, value_color, separator, os_info.kernel_type, os_info.kernel_version
     );
+    print!("\x1b[15C");
     println!(
-        "\x1b[19G{}{} {}{}  {}",
+        "{}{} {}{}  {}",
         key_color, uwuptime, value_color, separator, hw_info.uptime
     );
+    print!("\x1b[15C");
     println!(
-        "\x1b[19G{}{}    {}{}  {}",
+        "{}{}    {}{}  {}",
         key_color, cpuuwu, value_color, separator, hw_info.cpu
     );
+    print!("\x1b[15C");
     for gpu in &hw_info.gpus {
         println!(
-            "\x1b[19G{}{}    {}{}  {}",
+            "{}{}    {}{}  {}",
             key_color, gpuuwu, value_color, separator, gpu
         );
     }
+    print!("\x1b[15C");
     println!(
-        "\x1b[19G{}{} {}{}  {}MiB/{}MiB",
+        "{}{} {}{}  {}MiB/{}MiB",
         key_color, memowory, value_color, separator, hw_info.mem_used, hw_info.mem_total
     );
     println!();
     println!();
-    println!();
-    println!();
-    print!("\x1b[10A");
-}
-
-fn print_ascii_art(info: &OsInfo, config: &Configuration, force_distro: Option<String>) {
-    let mut distro_id = info.id.clone();
-    if let Some(distro) = force_distro {
-        distro_id = distro;
-    }
-    let art = match distro_id.as_ref() {
-        "arch" => include_str!("../distro_art/arch").to_string(),
-        "artix" => include_str!("../distro_art/artix").to_string(),
-        "debian" => include_str!("../distro_art/debian").to_string(),
-        "endeavouros" => include_str!("../distro_art/endeavouros").to_string(),
-        _ => include_str!("../distro_art/unknown").to_string(),
-    };
-
-    print!("\x1b[38;5;{}m", config.art_color.unwrap_or(255));
-    for line in art.lines() {
-        println!("\x1b[0G{}", line);
-    }
-    print!("\x1b[0m");
-    return;
+    //print!("\x1b[10A");
 }
 
 fn create_config_file(file: &std::path::Path) -> Result<Configuration, String> {
@@ -420,8 +478,8 @@ fn main() {
     }
 
     let config = parse_config();
-    let os_info = get_distro_info();
+    let mut os_info = get_distro_info();
     let hw_info = get_hardware_info();
+    print_ascii_art(&mut os_info, &config, distro);
     print_distro_info(&os_info, &hw_info, &config);
-    print_ascii_art(&os_info, &config, distro);
 }
