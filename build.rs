@@ -13,6 +13,7 @@ fn main() {
     cc::Build::new()
         .file("src/c/get_gpu.c")
         .flag("-O2")
+        .flag("-static")
         .compile("libget_gpu.so");
     // Link libs
     println!("cargo:rustc-link-lib=pci");

@@ -11,7 +11,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.5.1";
+const VERSION: &str = "1.5.2";
 
 struct OsInfo {
     id: String,
