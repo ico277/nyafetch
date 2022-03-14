@@ -11,7 +11,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.5.2";
+const VERSION: &str = "1.6.0";
 
 struct OsInfo {
     id: String,
@@ -107,13 +107,28 @@ fn get_distro_info() -> OsInfo {
     let release_file = release_file.lines();
     for line in release_file {
         if let Some(("ID" | "DISTRIB_ID", id)) = line.split_once("=") {
-            os_info.id = String::from(id.replace("\"", "")).to_lowercase();
+            os_info.id = match id.replace("\"", "").to_lowercase().as_ref() {
+                "ubuntu" => {
+                    match fs::read_to_string("/etc/apt/sources.list") {
+                        Ok(s) => {
+                            if s.to_lowercase().contains("linuxlite") {
+                                String::from("linuxmint")
+                            } else {
+                                String::from("ubuntu")
+                            }
+                        }
+                        Err(_) => String::from("ubuntu")
+                    }
+                }, 
+                s => s.to_string(),
+            };
             os_info.nyame = match os_info.id.as_ref() {
                 "arch" => String::from("Nyarch Linuwux"),
                 "artix" => String::from("Awartux Linuwux"),
                 "debian" => String::from("Debinyan Linuwux"),
                 "gentoo" => String::from("Gentowo Linuwux"),
                 "endeavouros" => String::from("EndeavOwOurOwOS"),
+                "ubuntu" => String::from("UwUntu"),
                 _ => String::from("UnknOwOwn :("),
             };
             break;
@@ -270,6 +285,8 @@ fn print_ascii_art(info: &mut OsInfo, config: &Configuration, force_distro: Opti
         "artix" => include_str!("../distro_art/artix").to_string(),
         "debian" => include_str!("../distro_art/debian").to_string(),
         "endeavouros" => include_str!("../distro_art/endeavouros").to_string(),
+        "ubuntu" => include_str!("../distro_art/ubuntu").to_string(),
+        "linuxlite" => include_str!("../distro_art/linuxlite").to_string(),
         _ => include_str!("../distro_art/unknown").to_string(),
     };
 
