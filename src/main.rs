@@ -11,7 +11,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.6.1";
+const VERSION: &str = "1.6.2";
 
 struct OsInfo {
     id: String,
@@ -113,7 +113,7 @@ fn get_distro_info() -> OsInfo {
                         Ok(s) => {
                             let s = s.to_lowercase();
                             if s.contains("linuxlite") || s.contains("linux lite") {
-                                String::from("linuxmint")
+                                String::from("linuxlite")
                             } else {
                                 String::from("ubuntu")
                             }

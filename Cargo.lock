@@ -247,7 +247,7 @@ dependencies = [
 
 [[package]]
 name = "nyafetch"
-version = "1.6.1"
+version = "1.6.2"
 dependencies = [
  "bindgen",
  "cc",
