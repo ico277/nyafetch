@@ -11,7 +11,7 @@ use std::io::prelude::*;
 use std::path::Path;
 use std::process::exit;
 
-const VERSION: &str = "1.6.0";
+const VERSION: &str = "1.6.1";
 
 struct OsInfo {
     id: String,
@@ -109,9 +109,10 @@ fn get_distro_info() -> OsInfo {
         if let Some(("ID" | "DISTRIB_ID", id)) = line.split_once("=") {
             os_info.id = match id.replace("\"", "").to_lowercase().as_ref() {
                 "ubuntu" => {
-                    match fs::read_to_string("/etc/apt/sources.list") {
+                    match fs::read_to_string("/etc/llver") {
                         Ok(s) => {
-                            if s.to_lowercase().contains("linuxlite") {
+                            let s = s.to_lowercase();
+                            if s.contains("linuxlite") || s.contains("linux lite") {
                                 String::from("linuxmint")
                             } else {
                                 String::from("ubuntu")
