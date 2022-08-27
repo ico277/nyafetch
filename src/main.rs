@@ -130,6 +130,7 @@ fn get_distro_info() -> OsInfo {
                 "gentoo" => String::from("Gentowo Linuwux"),
                 "endeavouros" => String::from("EndeavOwOurOwOS"),
                 "ubuntu" => String::from("UwUntu"),
+                "curtainos" => String::from("Cuwurtain OwOS"),
                 _ => String::from("UnknOwOwn :("),
             };
             break;
@@ -288,6 +289,7 @@ fn print_ascii_art(info: &mut OsInfo, config: &Configuration, force_distro: Opti
         "endeavouros" => include_str!("../distro_art/endeavouros").to_string(),
         "ubuntu" => include_str!("../distro_art/ubuntu").to_string(),
         "linuxlite" => include_str!("../distro_art/linuxlite").to_string(),
+        "curtainos" => include_str!("../distro_art/curtainos").to_string(),
         _ => include_str!("../distro_art/unknown").to_string(),
     };
 
