@@ -63,28 +63,76 @@ fn get_distro() -> (String, String) {
 	return (distro, distro_art);
 }
 
-fn get_env_info() -> (String, String) {
+fn get_env_info() -> String {
 	let mut shell = String::from("Unknowown QwQ");
-	let mut session_desktop = String::from("Unknowown QwQ");
-	let mut session_type = String::new();
-	let desktop;
+	//	let mut session_desktop = String::from("Unknowown QwQ");
+	//	let mut session_type = String::new();
+	//	let mut desktop = Some(());
 
 	for (key, value) in vars() {
 		match key.as_str() {
 			"SHELL" => shell = String::from(value),
-			"XDG_SESSION_DESKTOP" => session_desktop = String::from(value),
-			"XDG_SESSION_TYPE" => session_type = String::from(value),
+			//			"XDG_SESSION_DESKTOP" => session_desktop = String::from(value),
+			//			"XDG_SESSION_TYPE" => session_type = String::from(value),
 			_ => continue,
 		}
 	}
 
-
-
-	return (shell, desktop);
+	return shell;
 }
 
 fn main() {
-	//	println!("{:#?}", get_distro());
+	// config
+	// TODO add config file
+	let move_cur = "\x1b[15C";
+	let key_col = "\x1b[38;5;255m";
+	let val_col = "\x1b[38;5;255m";
+	let sep_col = "\x1b[38;5;105m";
+	let dist_col = "\x1b[38;5;105m";
+	let reset = "\x1b[0m";
+	let separator = ">OwO>";
+
+	// get info
 	let (distro_name, distro_art) = get_distro();
-	println!("'{}':\n{}", distro_name, distro_art);
+	let shell = get_env_info();
+	// print distro
+	println!("{}", distro_art);
+	// print info
+	print!("\x1b[10F"); // go 10 lines up
+	//
+	
+	print!("{}", move_cur); // Move cursor
+	println!(
+		"{}OwOS    {}{} {}{}",
+		key_col, sep_col, separator, val_col, distro_name
+	); // color ; color ; separator ; color ; value
+	print!("{}", move_cur); // Move cursor
+	println!(
+		"{}Shewell {}{} {}{}",
+		key_col, sep_col, separator, val_col, shell
+	); // color ; color ; separator ; color ; value
+	print!("{}", move_cur); // Move cursor
+	println!(
+		"{}OwOS    {}{} {}{}",
+		key_col, sep_col, separator, val_col, distro_name
+	); // color ; color ; separator ; color ; value
+	print!("{}", move_cur); // Move cursor
+	println!(
+		"{}OwOS    {}{} {}{}",
+		key_col, sep_col, separator, val_col, distro_name
+	); // color ; color ; separator ; color ; value
+	print!("{}", move_cur); // Move cursor
+	println!(
+		"{}OwOS    {}{} {}{}",
+		key_col, sep_col, separator, val_col, distro_name
+	); // color ; color ; separator ; color ; value
+	print!("{}", move_cur); // Move cursor
+	println!(
+		"{}OwOS    {}{} {}{}",
+		key_col, sep_col, separator, val_col, distro_name
+	); // color ; color ; separator ; color ; value
+	print!("{}", move_cur); // Move cursor
+	println!("\n\n");
+
+	println!("");
 }
