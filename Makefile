@@ -1,13 +1,14 @@
 CXX = c++
 CXXFILES = $(wildcard src/*.cpp)
-override CXXFLAGS += -std=c++20 -Wall 
+override CXXFLAGS += -std=c++20 -Wall
+override LDFLAGS += -ltomlplusplus -lpci
 PREFIX = /usr/local
 EXECUTABLE = nyafetch
 
 .PHONY: build install uninstall clean run debug 
 
 build:
-	$(CXX) $(CXXFILES) $(CXXFLAGS) -o $(EXECUTABLE).out
+	$(CXX) $(CXXFILES) $(LDFLAGS) $(CXXFLAGS) -o $(EXECUTABLE).out
 
 install: ./$(EXECUTABLE).out
 	cp ./$(EXECUTABLE).out $(PREFIX)/bin/$(EXECUTABLE)
@@ -23,6 +24,6 @@ run: build
 	./$(EXECUTABLE).out
 
 debug: clean
-	$(CXX) -DDEBUG $(CXXFILES) -o $(EXECUTABLE)_debug.out $(CXXFLAGS) -g
+	$(CXX) -DDEBUG $(CXXFILES) -o $(EXECUTABLE)_debug.out $(LDFLAGS) $(CXXFLAGS) -g
 #	./$(EXECUTABLE)_debug.out $(RUNARGS)
 
