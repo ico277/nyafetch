@@ -2,7 +2,7 @@
 os     = "%OS_NAME%"               # possible values: OS_NAME OS_ID
 kernel = "Linux %KERNEL_VERSION%"  # possible values: KERNEL_VERSION 
 uptime = "%UPTIME%"                # possible values: UPTIME
-cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQMHz"           # possible values: CPU CPU_CORES CPU_FREQ
+cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"           # possible values: CPU CPU_CORES CPU_FREQ
 gpu    = "%GPU%"                                      # possible values: GPU
 memory = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
 order  = ["OS", "KERNEL", "UPTIME", "CPU", "GPU", "MEMORY"]

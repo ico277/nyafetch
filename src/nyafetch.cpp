@@ -1,50 +1,51 @@
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
-#include <exception>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <array>
 #include <sstream>
 #include <string>
+#include <tuple>
 
 #include "nyafetch.hpp"
+#include "crc.hpp"
 
 extern "C" {
-#include "pci/pci.h"
+#include <pci/pci.h>
 }
 
 // index 0: ID
 // index 1: NAME
 std::array<std::string, 2> get_os() {
-    std::array<std::string, 2> arr = {"", ""};
+    std::array<std::string, 2> os = {"", ""};
 
     std::string line;
     std::ifstream file("/etc/os-release");
     while (getline(file, line)) {
         // if array is filled -> exit
-        if (!arr[0].empty() && !arr[1].empty()) {
+        if (!os[0].empty() && !os[1].empty()) {
             break;
         }
         // check if line starts with 'ID='
         if (line.find("ID=") == 0) {
             // remove 'ID='
-            replaceAll(line, "ID=", "");
+            replace_all(line, "ID=", "");
             // remove '"'
-            replaceAll(line, "\"", "");
-            arr[0] = line;
+            replace_all(line, "\"", "");
+            os[0] = line;
         } else if (line.find("NAME=") == 0) {
             // remove 'NAME='
-            replaceAll(line, "NAME=", "");
+            replace_all(line, "NAME=", "");
             // remove '"'
-            replaceAll(line, "\"", "");
-            arr[1] = line;
+            replace_all(line, "\"", "");
+            os[1] = line;
         }
     }
 
     file.close();
-    return arr;
+    return os;
 }
 
 std::string get_kernel_version() {
@@ -177,19 +178,19 @@ std::array<std::string, 4> get_meminfo() {
     std::string line;
     std::ifstream file("/proc/meminfo");
     while (getline(file, line)) {
-        // if array is filled -> exit
+        // if both are filled -> exit
         if (!memtotal_str.empty() && !memavail_str.empty()) {
             break;
         } else if (line.find("MemTotal:") == 0) {
             std::size_t colon_index = line.find(":") + 1;
             line.replace(0, colon_index, "");
-            line = ltrim(line);
+            line = left_trim(line);
             memtotal_str = line;
             getline(std::istringstream(line), memtotal_str, ' ');
         } else if (line.find("MemAvailable:") == 0) {
             std::size_t colon_index = line.find(":") + 1;
             line.replace(0, colon_index, "");
-            line = ltrim(line);
+            line = left_trim(line);
             getline(std::istringstream(line), memavail_str, ' ');
         }
     }
@@ -207,9 +208,110 @@ std::array<std::string, 4> get_meminfo() {
     };
 }
 
+
+// 0 art
+// 1 height
+// 2 width
+std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
+    std::string str;
+    size_t height, width;
+
+    switch (crchash) {
+        case 3646356822: // 'arch'
+            str = "      /\\      \n"
+                  "    ^/  \\^    \n"
+                  "    /\\   \\  \n"
+                  "   / ^ w ^\\   \n"
+                  "  /   __   \\  \n"
+                  " /   |  |  -\\ \n"
+                  "/_-''    ''-_\\\n";
+            height = 7;
+            width = 14;
+            break;
+        case 3699236742: // 'artix'
+            str = "      /\\      \n"
+                  "    ^/  \\^    \n"
+                  "    / -_ \\    \n"
+                  "   /  :3-_\\   \n"
+                  "  /    _-  \\  \n"
+                  " /  _-  -_  \\ \n"
+                  "/_-        -_\\\n";
+            height = 7;
+            width = 14;
+            break;
+        case 2085247189: // 'linuxlite'
+            str = "   /\\   \n"
+                  "  /  \\  \n"
+                  " / / /  \n"
+                  "> w <   \n"
+                  " \\ \\ \\ \\\n"
+                  "  \\_\\_\\\n"
+                  "     \\\n";
+            height = 7;
+            width = 8;
+            break;
+        case 3448321946: // 'ubuntu'
+            str = "         _ \n"
+                  "     ---(_)\n"
+                  " _/  ---  \\\n"
+                  "(_) |OwO|  \n"
+                  "  \\  --- _/\n"
+                  "     ---(_)\n";
+            height = 6;
+            width = 11;
+            break;
+        case 4081749186: // 'gentoo'
+            str = " _-----_   \n"
+                  "(       \\  \n"
+                  "\\  0w0   \\ \n"
+                  " \\        )\n"
+                  " /      _/ \n"
+                  "(     _-   \n"
+                  "\\____-    \n";
+            height = 7;
+            width = 11;
+            break;
+        case 3262278895: // 'debian'
+            str = "    _____   \n"
+                  "   /  ___ \\ \n"
+                  "  |  / ^w^ |\n"
+                  "  |  \\____/ \n"
+                  "   -_       \n"
+                  "     -._    \n";
+            height = 6;
+            width = 12; 
+            break;
+        case 3154936481: // 'endeavouros'
+            str = "      /\\     \n"
+                  "   ^//  \\\\^  \n"
+                  "   //    \\ \\ \n"
+                  " / / ^ w ^) )\n"
+                  "/_/___-- __- \n"
+                  " /____--     \n";
+            height = 6;
+            width = 13;
+            break;
+        default:         // unknown distro
+            str = "     #####     \n"
+                  "    ##OwO##    \n"
+                  "    #######    \n"
+                  "  ###########  \n"
+                  " ############# \n"
+                  "###############\n" 
+                  " ############# \n"
+                  "  ###########  \n";
+            height = 7;
+            width = 15;
+            break;
+    }
+
+    return std::make_tuple(str, height, width);
+}
+
 int main(int argc, char** argv) {
+    // TODO add argument parsing
+
     nyafetch::Config config;
-    // TODO finish config file handling
     std::string config_path = getenv("HOME");
     config_path += "/.config/nyafetch.conf";
     if (std::filesystem::exists(config_path)) {
@@ -219,55 +321,99 @@ int main(int argc, char** argv) {
         std::cerr << "No config file found! wrote default config file to " << config_path << "\n";
     }
 
-#ifdef DEBUG
-    auto vec2str = [](const std::vector<std::string>& v) -> std::string {
-        std::ostringstream oss;
-        oss << "[";
-        for (size_t i = 0; i < v.size(); ++i) {
-            oss << "\"" << v[i] << "\"";
-            if (i != v.size() - 1) {
-                oss << ", ";
-            }
-        }
-        oss << "]";
-        return oss.str();
-    };
-    std::cout << "config.os='" << config.os << "'\n"
-              << "config.kernel='" << config.kernel << "'\n"
-              << "config.uptime='" << config.uptime << "'\n"
-              << "config.cpu='" << config.cpu << "'\n"
-              << "config.gpu='" << config.gpu << "'\n"
-              << "config.memory='" << config.memory << "'\n"
-              << "config.order='" << vec2str(config.order) << "'\n"
-              << "config.uwuify='" << config.uwuify << "'\n"
-              << "config.seperator='" << config.seperator << "'\n"
-              << "config.key_color='" << config.key_color << "'\n"
-              << "config.seperator_color='" << config.seperator_color << "'\n"
-              << "config.value_color='" << config.value_color << "'\n"
-              << "config.distro_art_color='" << config.distro_art_color << "'\n";
-#endif
+    std::array<std::string, 2> os_name = get_os();
+    std::tuple<std::string, size_t, size_t> distro_art_tuple = get_distro_art(strcrc32(os_name[0].c_str()));
+    std::string art = std::get<0>(distro_art_tuple);
+    size_t height = std::get<1>(distro_art_tuple);
+    size_t width = std::get<2>(distro_art_tuple) + 1;
     
-    // TODO add argument parsing
+    // print everything
+    std::cout << config.distro_art_color << art << RESET;
+    MOVE_CUR_UP(height);
 
-    // Print info
-    std::array<std::string, 2> name = get_os();
-    std::cout << "OS_ID : " << name[0] << "\n";
-    std::cout << "OS_NAME : " << name[1] << "\n";
-    std::string kernel_version = get_kernel_version();
-    std::cout << "KERNEL_VERSION : " << kernel_version << "\n";
-    std::string uptime = get_uptime();
-    std::cout << "UPTIME : " << uptime << "\n";
-    std::array<std::string, 3> cpuinfo = get_cpuinfo();
-    std::cout << "CPU : " << cpuinfo[0] << "\n";
-    std::cout << "CPU_FREQ : " << cpuinfo[1] << "\n";
-    std::cout << "CPU_CORES : " << cpuinfo[2] << "\n";
-    std::vector<std::string> gpus = get_gpu_names();
-    for (const auto& gpu : gpus) {
-        std::cout << "GPU : " << gpu << "\n";
+    size_t total_lines = 0;
+    for(auto& element : config.order) {
+        std::string line;
+        switch (strcrc32(element.c_str())) {
+            case 2239976324: { // 'OS'
+                line += config.value_color + "OS    " + RESET;
+                line += config.seperator_color + config.seperator + RESET;
+                line += config.value_color + config.os + RESET;
+                replace_all(line, "%OS_ID%", os_name[0]);
+                replace_all(line, "%OS_NAME%", os_name[1]);
+                break;
+            }
+            case 485031054: {  // 'KERNEL'
+                std::string kernel_version = get_kernel_version();
+                line += config.value_color + "Kernel" + RESET;
+                line += config.seperator_color + config.seperator + RESET;
+                line += config.value_color + config.kernel + RESET;
+                replace_all(line, "%KERNEL_VERSION%", kernel_version);
+                break;
+            }
+            case 471202914: {  // 'UPTIME'
+                std::string uptime = get_uptime();
+                line += config.value_color + "Uptime" + RESET;
+                line += config.seperator_color + config.seperator + RESET;
+                line += config.value_color + config.uptime + RESET;
+                replace_all(line, "%UPTIME%", uptime);
+                break;
+            }
+            case 3546729398: { // 'CPU'
+                std::array<std::string, 3> cpuinfo = get_cpuinfo();
+                line += config.value_color + "CPU   " + RESET;
+                line += config.seperator_color + config.seperator + RESET;
+                line += config.value_color + config.cpu + RESET;
+                replace_all(line, "%CPU%", cpuinfo[0]);
+                replace_all(line, "%CPU_FREQ%", cpuinfo[1]);
+                replace_all(line, "%CPU_CORES%", cpuinfo[2]);
+                break;
+            }
+            case 3564069738: { // 'GPU'
+                std::vector<std::string> gpus = get_gpu_names();
+                size_t gpusize = gpus.size();
+                size_t i;
+                for (i = 0; i < gpusize; i++) {
+                    std::string gpu_line;
+                    gpu_line += config.value_color + "GPU   " + RESET;
+                    gpu_line += config.seperator_color + config.seperator + RESET;
+                    gpu_line += config.value_color + config.gpu + RESET;
+                    std::string gpu = gpus[i];
+                    replace_all(gpu_line, "%GPU%", gpu);
+                    if (i != 0)
+                        line += "\x1b[" + std::to_string(width) + "C";
+                    line += gpu_line;
+                    if (i != gpusize - 1)
+                        line += "\n";
+                    
+                }
+                total_lines += i;
+                break;
+            }
+            case 2874626576: { // 'MEMORY'
+                std::array<std::string, 4> meminfo = get_meminfo(); 
+                line += config.value_color + "Memory" + RESET;
+                line += config.seperator_color + config.seperator + RESET;
+                line += config.value_color + config.memory + RESET;
+                replace_all(line, "%MEM_TOTAL%", meminfo[0]);
+                replace_all(line, "%MEM_AVAILABLE%", meminfo[1]);
+                replace_all(line, "%MEM_USED%", meminfo[2]);
+                replace_all(line, "%MEM_USED_PERCENT%", meminfo[3]);
+                break;
+            }
+            default:
+                line = element;
+                break;
+        }
+
+        MOVE_CUR_RIGHT(width);
+        std::cout << line << "\n";
+
+        total_lines++;
     }
-    std::array<std::string, 4> meminfo = get_meminfo(); 
-    std::cout << "MEM_TOTAL : " << meminfo[0] << "\n";
-    std::cout << "MEM_AVAILABLE : " << meminfo[1] << "\n";
-    std::cout << "MEM_USED : " << meminfo[2] << "\n";
-    std::cout << "MEM_USED_PERCENT : " << meminfo[3] << "\n";
+    if (total_lines < height) {
+        for (size_t i = 0; i < (height - total_lines); i++)
+            std::cout << "\n";
+    }
+    std::cout << "\n";
 }

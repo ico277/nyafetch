@@ -1,26 +1,43 @@
 #include <algorithm>
+#include <cstddef>
 #include <vector>
 
 #include <toml++/toml.hpp>
 
-inline void replaceAll(std::string& str, const std::string& from, const std::string& to) {
+
+#define MOVE_CUR_UP(x) std::cout << "\x1b[" << x << "A"
+#define MOVE_CUR_RIGHT(x) std::cout << "\x1b[" << x << "C"
+#define RESET "\x1b[0m"
+
+static inline void replace_all(std::string& str, const std::string& from, const std::string& to) {
     if(from.empty()) {
-        return; // Avoid infinite loop when 'from' is an empty string
+        return; // avoid infinite loop when 'from' is an empty string
     }
     std::size_t start_pos = 0;
     while((start_pos = str.find(from, start_pos)) != std::string::npos) {
         str.replace(start_pos, from.length(), to);
-        start_pos += to.length(); // Move past the replacement
+        start_pos += to.length(); // move past the replacement
     }
 }
 
-inline std::string ltrim(const std::string& s) {
+static inline std::string left_trim(const std::string& s) {
     std::string result = s;
     result.erase(result.begin(), std::find_if(result.begin(), result.end(), [](unsigned char ch) {
         return !std::isspace(ch);
     }));
     return result;
 }
+
+/*inline size_t checksum(std::string str) {
+    size_t result = 0;
+
+    for(size_t i = 0; i < str.length(); i++) {
+        result += str[i];
+        result ^= i;
+    }
+
+    return result;
+}*/
 
 namespace nyafetch {
 
@@ -79,19 +96,19 @@ namespace nyafetch {
                 // it uses the default value specified at variable creation
                 if (auto key_color_val = appearance_tb->get_as<std::string>("key_color")) {
                     this->key_color = key_color_val->get();
-                    replaceAll(this->key_color, "\\x1b", "\x1b");
+                    replace_all(this->key_color, "\\x1b", "\x1b");
                 }
                 if (auto seperator_color_val = appearance_tb->get_as<std::string>("seperator_color")) {
                     this->seperator_color = seperator_color_val->get();
-                    replaceAll(this->seperator_color, "\\x1b", "\x1b");
+                    replace_all(this->seperator_color, "\\x1b", "\x1b");
                 }
                 if (auto value_color_val = appearance_tb->get_as<std::string>("value_color")) {
                     this->value_color = value_color_val->get();
-                    replaceAll(this->value_color, "\\x1b", "\x1b");
+                    replace_all(this->value_color, "\\x1b", "\x1b");
                 }
                 if (auto distro_art_color_val = appearance_tb->get_as<std::string>("distro_art_color")) {
                     this->distro_art_color = distro_art_color_val->get();
-                    replaceAll(this->distro_art_color, "\\x1b", "\x1b");
+                    replace_all(this->distro_art_color, "\\x1b", "\x1b");
                 }
             }
         }
@@ -120,7 +137,7 @@ namespace nyafetch {
 os     = "%OS_NAME%"               # possible values: OS_NAME OS_ID
 kernel = "Linux %KERNEL_VERSION%"  # possible values: KERNEL_VERSION 
 uptime = "%UPTIME%"                # possible values: UPTIME
-cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQMHz"           # possible values: CPU CPU_CORES CPU_FREQ
+cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"           # possible values: CPU CPU_CORES CPU_FREQ
 gpu    = "%GPU%"                                      # possible values: GPU
 memory = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
 order  = ["OS", "KERNEL", "UPTIME", "CPU", "GPU", "MEMORY"]
