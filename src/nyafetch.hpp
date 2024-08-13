@@ -7,6 +7,8 @@
 
 #define MOVE_CUR_UP(x) std::cout << "\x1b[" << x << "A"
 #define MOVE_CUR_RIGHT(x) std::cout << "\x1b[" << x << "C"
+#define DISABLE_LINE_WRAP() std::cout << "\x1b[?7l"
+#define ENABLE_LINE_WRAP() std::cout << "\x1b[?7h"
 #define RESET "\x1b[0m"
 
 static inline void replace_all(std::string& str, const std::string& from, const std::string& to) {
@@ -25,6 +27,18 @@ static inline std::string left_trim(const std::string& s) {
     result.erase(result.begin(), std::find_if(result.begin(), result.end(), [](unsigned char ch) {
         return !std::isspace(ch);
     }));
+    return result;
+}
+static inline std::string right_trim(const std::string& s) {
+    std::string result = s;
+    result.erase(std::find_if(result.rbegin(), result.rend(), [](unsigned char ch) {
+        return !std::isspace(ch);
+    }).base(), result.end());
+    return result;
+}
+static inline std::string remove_newlines(const std::string& s) {
+    std::string result = s;
+    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
     return result;
 }
 
@@ -55,27 +69,35 @@ namespace nyafetch {
                 // it uses the default value specified at variable creation
                 if (auto os_val = format_tb->get_as<std::string>("os")) {
                     this->os = os_val->get();
+                    replace_all(this->os, "\\x1b", "\x1b");
                 }
                 if (auto kernel_val = format_tb->get_as<std::string>("kernel")) {
                     this->kernel = kernel_val->get();
+                    replace_all(this->kernel, "\\x1b", "\x1b");
                 }
                 if (auto uptime_val = format_tb->get_as<std::string>("uptime")) {
                     this->uptime = uptime_val->get();
+                    replace_all(this->uptime, "\\x1b", "\x1b");
                 }
                 if (auto cpu_val = format_tb->get_as<std::string>("cpu")) {
                     this->cpu = cpu_val->get();
+                    replace_all(this->cpu, "\\x1b", "\x1b");
                 }
                 if (auto gpu_val = format_tb->get_as<std::string>("gpu")) {
                     this->gpu = gpu_val->get();
+                    replace_all(this->gpu, "\\x1b", "\x1b");
                 }
                 if (auto memory_val = format_tb->get_as<std::string>("memory")) {
                     this->memory = memory_val->get();
+                    replace_all(this->memory, "\\x1b", "\x1b");
                 }
                 // Read order array
                 if (auto order_array = format_tb->get("order")) {
                     std::vector<std::string> order;
                     for (auto& val : *order_array->as_array()) {
-                        order.push_back(val.as_string()->get());
+                        std::string str = val.as_string()->get();
+                        replace_all(str, "\\x1b", "\x1b");
+                        order.push_back(str);
                     }
                     this->order = order;
                 }
@@ -84,6 +106,7 @@ namespace nyafetch {
                 }
                 if (auto seperator_val = format_tb->get_as<std::string>("seperator")) {
                     this->seperator = seperator_val->get();
+                    replace_all(this->seperator, "\\x1b", "\x1b");
                 }
             }
  
@@ -137,8 +160,8 @@ namespace nyafetch {
 os     = "%OS_NAME%"               # possible values: OS_NAME OS_ID
 kernel = "Linux %KERNEL_VERSION%"  # possible values: KERNEL_VERSION 
 uptime = "%UPTIME%"                # possible values: UPTIME
-cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"           # possible values: CPU CPU_CORES CPU_FREQ
-gpu    = "%GPU%"                                      # possible values: GPU
+cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"         # possible values: CPU CPU_CORES CPU_FREQ
+gpu    = "%GPU%"                                       # possible values: GPU
 memory = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
 order  = ["OS", "KERNEL", "UPTIME", "CPU", "GPU", "MEMORY"]
 uwuify = true

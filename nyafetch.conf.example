@@ -1,13 +1,34 @@
-[format]
-os     = "%OS_NAME%"               # possible values: OS_NAME OS_ID
-kernel = "Linux %KERNEL_VERSION%"  # possible values: KERNEL_VERSION 
-uptime = "%UPTIME%"                # possible values: UPTIME
-cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"           # possible values: CPU CPU_CORES CPU_FREQ
-gpu    = "%GPU%"                                      # possible values: GPU
-memory = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
-order  = ["OS", "KERNEL", "UPTIME", "CPU", "GPU", "MEMORY"]
-uwuify = true
+[main]
+order  = ["os", "kernel", "uptime", "cpu", "gpu", "memory", "custom_example"]
 seperator = " -> "
+
+[format.os]
+key = "OS    "
+value = "%OS_NAME%"                                   # possible values: OS_NAME OS_ID
+
+[format.kernel]
+key = "Kernel"
+value = "Linux %KERNEL_VERSION%"                      # possible values: KERNEL_VERSION 
+
+[format.uptime]
+key = "Uptime"
+value = "%UPTIME%"                                    # possible values: UPTIME
+
+[format.cpu]
+key = "CPU   "
+value = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"         # possible values: CPU CPU_CORES CPU_FREQ
+
+[format.gpu]
+key = "GPU   "
+value = "%GPU%"                                       # possible values: GPU
+
+[format.memory]
+key = "Memory"
+value = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
+
+[format.custom_example]
+key = "Disk  "
+value = "SH:df -h | awk '/% \/$/ {print $5}'"         # values starting with 'SH:' are run by the default shell (/bin/sh)
 
 [appearance]
 # ANSI escape codes

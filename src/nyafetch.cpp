@@ -8,6 +8,7 @@
 #include <sstream>
 #include <string>
 #include <tuple>
+#include <csignal>
 
 #include "nyafetch.hpp"
 #include "crc.hpp"
@@ -149,19 +150,19 @@ std::vector<std::string> get_gpu_names() {
         case 0x0380:
         case 0x0301:
         case 0x0302:
-        case 0x0300:
+        case 0x0300: {
             pci_lookup_name(pciaccess, gpu_name, 512,
                             PCI_LOOKUP_VENDOR, dev->vendor_id);
             pci_lookup_name(pciaccess, gpu_vendor, 512,
                             PCI_LOOKUP_DEVICE, dev->vendor_id, dev->device_id);
+            std::string gpu;
+            gpu += std::string(gpu_vendor) + " " + std::string(gpu_name);
+            gpus.push_back(gpu);
             break;
+        }
         default:
             continue;
         }
-
-        std::string gpu;
-        gpu += std::string(gpu_vendor) + " " + std::string(gpu_name);
-        gpus.push_back(gpu);
     }
     pci_cleanup(pciaccess);
     return gpus;
@@ -230,9 +231,9 @@ std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
             break;
         case 3699236742: // 'artix'
             str = "      /\\      \n"
-                  "    ^/  \\^    \n"
+                  "    ^/:3\\^    \n"
                   "    / -_ \\    \n"
-                  "   /  :3-_\\   \n"
+                  "   /    -_\\   \n"
                   "  /    _-  \\  \n"
                   " /  _-  -_  \\ \n"
                   "/_-        -_\\\n";
@@ -254,7 +255,7 @@ std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
             str = "         _ \n"
                   "     ---(_)\n"
                   " _/  ---  \\\n"
-                  "(_) |OwO|  \n"
+                  "(_) |UwU|  \n"
                   "  \\  --- _/\n"
                   "     ---(_)\n";
             height = 6;
@@ -292,7 +293,7 @@ std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
             width = 13;
             break;
         default:         // unknown distro
-            str = "     #####     \n"
+            str = "    ^#####^    \n"
                   "    ##OwO##    \n"
                   "    #######    \n"
                   "  ###########  \n"
@@ -300,7 +301,7 @@ std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
                   "###############\n" 
                   " ############# \n"
                   "  ###########  \n";
-            height = 7;
+            height = 8;
             width = 15;
             break;
     }
@@ -308,7 +309,16 @@ std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
     return std::make_tuple(str, height, width);
 }
 
+void exit_handler(int _signal) {
+    // enable line wrap and reset colors
+    ENABLE_LINE_WRAP() << RESET;
+    exit(-1);
+}
+
 int main(int argc, char** argv) {
+    // signal handling
+    signal(SIGINT, exit_handler);
+
     // TODO add argument parsing
 
     nyafetch::Config config;
@@ -324,14 +334,14 @@ int main(int argc, char** argv) {
     std::array<std::string, 2> os_name = get_os();
     std::tuple<std::string, size_t, size_t> distro_art_tuple = get_distro_art(strcrc32(os_name[0].c_str()));
     std::string art = std::get<0>(distro_art_tuple);
-    size_t height = std::get<1>(distro_art_tuple);
-    size_t width = std::get<2>(distro_art_tuple) + 1;
+    size_t art_height = std::get<1>(distro_art_tuple);
+    size_t art_width = std::get<2>(distro_art_tuple) + 1;
     
     // print everything
     std::cout << config.distro_art_color << art << RESET;
-    MOVE_CUR_UP(height);
+    MOVE_CUR_UP(art_height);
 
-    size_t total_lines = 0;
+    std::vector<std::string> lines = {};
     for(auto& element : config.order) {
         std::string line;
         switch (strcrc32(element.c_str())) {
@@ -371,23 +381,19 @@ int main(int argc, char** argv) {
             }
             case 3564069738: { // 'GPU'
                 std::vector<std::string> gpus = get_gpu_names();
-                size_t gpusize = gpus.size();
-                size_t i;
-                for (i = 0; i < gpusize; i++) {
+                size_t gpus_size = gpus.size();
+                for (size_t i = 0; i < gpus_size; i++) {
                     std::string gpu_line;
                     gpu_line += config.value_color + "GPU   " + RESET;
                     gpu_line += config.seperator_color + config.seperator + RESET;
                     gpu_line += config.value_color + config.gpu + RESET;
                     std::string gpu = gpus[i];
                     replace_all(gpu_line, "%GPU%", gpu);
-                    if (i != 0)
-                        line += "\x1b[" + std::to_string(width) + "C";
-                    line += gpu_line;
-                    if (i != gpusize - 1)
-                        line += "\n";
-                    
+                    if (i == (gpus_size - 1))
+                        line = gpu_line;
+                    else
+                        lines.push_back(gpu_line);
                 }
-                total_lines += i;
                 break;
             }
             case 2874626576: { // 'MEMORY'
@@ -402,18 +408,20 @@ int main(int argc, char** argv) {
                 break;
             }
             default:
-                line = element;
+                line = "~" + element + "~";
                 break;
         }
-
-        MOVE_CUR_RIGHT(width);
-        std::cout << line << "\n";
-
-        total_lines++;
+        lines.push_back(line);
     }
-    if (total_lines < height) {
-        for (size_t i = 0; i < (height - total_lines); i++)
+    // print
+    DISABLE_LINE_WRAP();
+    for (auto& line : lines) {
+        MOVE_CUR_RIGHT(art_width) << line << "\n";
+    }
+    if (lines.size() < art_height) {
+        for (size_t i = 0; i < (art_height - lines.size()); i++)
             std::cout << "\n";
     }
-    std::cout << "\n";
+    // re-enable line-wrap
+    ENABLE_LINE_WRAP();
 }
