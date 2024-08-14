@@ -294,7 +294,7 @@ std::tuple<std::string, size_t, size_t> get_distro_art(uint32_t crchash) {
             break;
         default:         // unknown distro
             str = "    ^#####^    \n"
-                  "    ##OwO##    \n"
+                  "    ##OvO##    \n"
                   "    #######    \n"
                   "  ###########  \n"
                   " ############# \n"
@@ -330,6 +330,14 @@ int main(int argc, char** argv) {
         nyafetch::Config::WriteDefaultConfig(config_path);
         std::cerr << "No config file found! wrote default config file to " << config_path << "\n";
     }
+#ifdef DEBUG
+    for (const auto& [section, pair] : config.format_map) {
+        std::cout << "Section: " << section << "\n";
+        std::cout << "Key: " << pair.first << "\n";
+        std::cout << "Value: " << pair.second << "\n";
+        std::cout << "--------------------------\n";
+    }
+#endif
 
     std::array<std::string, 2> os_name = get_os();
     std::tuple<std::string, size_t, size_t> distro_art_tuple = get_distro_art(strcrc32(os_name[0].c_str()));
@@ -345,48 +353,48 @@ int main(int argc, char** argv) {
     for(auto& element : config.order) {
         std::string line;
         switch (strcrc32(element.c_str())) {
-            case 2239976324: { // 'OS'
-                line += config.value_color + "OS    " + RESET;
+            case 728324078: { // 'os'
+                line += config.key_color + config.format_map["os"].first + RESET;
                 line += config.seperator_color + config.seperator + RESET;
-                line += config.value_color + config.os + RESET;
+                line += config.value_color + config.format_map["os"].second + RESET;
                 replace_all(line, "%OS_ID%", os_name[0]);
                 replace_all(line, "%OS_NAME%", os_name[1]);
                 break;
             }
-            case 485031054: {  // 'KERNEL'
+            case 3960486664: {  // 'kernel'
                 std::string kernel_version = get_kernel_version();
-                line += config.value_color + "Kernel" + RESET;
+                line += config.key_color + config.format_map["kernel"].first + RESET;
                 line += config.seperator_color + config.seperator + RESET;
-                line += config.value_color + config.kernel + RESET;
+                line += config.value_color + config.format_map["kernel"].second + RESET;
                 replace_all(line, "%KERNEL_VERSION%", kernel_version);
                 break;
             }
-            case 471202914: {  // 'UPTIME'
+            case 3974970340: {  // 'uptime'
                 std::string uptime = get_uptime();
-                line += config.value_color + "Uptime" + RESET;
+                line += config.key_color + config.format_map["uptime"].first + RESET;
                 line += config.seperator_color + config.seperator + RESET;
-                line += config.value_color + config.uptime + RESET;
+                line += config.value_color + config.format_map["uptime"].second + RESET;
                 replace_all(line, "%UPTIME%", uptime);
                 break;
             }
-            case 3546729398: { // 'CPU'
+            case 1170311484: { // 'cpu'
                 std::array<std::string, 3> cpuinfo = get_cpuinfo();
-                line += config.value_color + "CPU   " + RESET;
+                line += config.key_color + config.format_map["cpu"].first + RESET;
                 line += config.seperator_color + config.seperator + RESET;
-                line += config.value_color + config.cpu + RESET;
+                line += config.value_color + config.format_map["cpu"].second + RESET;
                 replace_all(line, "%CPU%", cpuinfo[0]);
                 replace_all(line, "%CPU_FREQ%", cpuinfo[1]);
                 replace_all(line, "%CPU_CORES%", cpuinfo[2]);
                 break;
             }
-            case 3564069738: { // 'GPU'
+            case 1120412128: { // 'gpu'
                 std::vector<std::string> gpus = get_gpu_names();
                 size_t gpus_size = gpus.size();
                 for (size_t i = 0; i < gpus_size; i++) {
                     std::string gpu_line;
-                    gpu_line += config.value_color + "GPU   " + RESET;
+                    gpu_line += config.key_color + config.format_map["gpu"].first + RESET;
                     gpu_line += config.seperator_color + config.seperator + RESET;
-                    gpu_line += config.value_color + config.gpu + RESET;
+                    gpu_line += config.value_color + config.format_map["gpu"].second + RESET;
                     std::string gpu = gpus[i];
                     replace_all(gpu_line, "%GPU%", gpu);
                     if (i == (gpus_size - 1))
@@ -396,11 +404,11 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
-            case 2874626576: { // 'MEMORY'
+            case 1538233750: { // 'memory'
                 std::array<std::string, 4> meminfo = get_meminfo(); 
-                line += config.value_color + "Memory" + RESET;
+                line += config.key_color + config.format_map["memory"].first + RESET;
                 line += config.seperator_color + config.seperator + RESET;
-                line += config.value_color + config.memory + RESET;
+                line += config.value_color + config.format_map["memory"].second + RESET;
                 replace_all(line, "%MEM_TOTAL%", meminfo[0]);
                 replace_all(line, "%MEM_AVAILABLE%", meminfo[1]);
                 replace_all(line, "%MEM_USED%", meminfo[2]);
@@ -408,7 +416,19 @@ int main(int argc, char** argv) {
                 break;
             }
             default:
-                line = "~" + element + "~";
+                std::string key = config.format_map[element].first;
+                if (key.find("SH:") == 0) {
+                    key.erase(0, 3);
+                    key = exec_cmd(key);
+                }
+                std::string value = config.format_map[element].second;
+                if (value.find("SH:") == 0) {
+                    value.erase(0, 3);
+                    value = exec_cmd(value);
+                }
+                line += config.key_color + key + RESET;
+                line += config.seperator_color + config.seperator + RESET;
+                line += config.value_color + value + RESET;
                 break;
         }
         lines.push_back(line);

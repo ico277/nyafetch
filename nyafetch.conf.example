@@ -27,12 +27,12 @@ key = "Memory"
 value = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
 
 [format.custom_example]
-key = "Disk  "
-value = "SH:df -h | awk '/% \/$/ {print $5}'"         # values starting with 'SH:' are run by the default shell (/bin/sh)
+key = "Disk /"
+value = "SH:df -h | awk '/% \\/$/ {print $5 \" used\"}'"         # values starting with 'SH:' are run by the default shell (/bin/sh)
 
 [appearance]
 # ANSI escape codes
-key_color = "\\x1b[38;5;213m"
-seperator_color = "\\x1b[38;5;7m"
-value_color = "\\x1b[38;5;213m"
+key_color = "\\x1b[38;5;7m"
+seperator_color = "\\x1b[38;5;213m"
+value_color = "\\x1b[38;5;7m"
 distro_art_color = "\\x1b[38;5;213m"

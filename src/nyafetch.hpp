@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cstddef>
+#include <unordered_map>
 #include <vector>
+#include <string>
 
 #include <toml++/toml.hpp>
 
@@ -36,9 +38,21 @@ static inline std::string right_trim(const std::string& s) {
     }).base(), result.end());
     return result;
 }
-static inline std::string remove_newlines(const std::string& s) {
-    std::string result = s;
-    result.erase(std::remove(result.begin(), result.end(), '\n'), result.end());
+static inline std::string exec_cmd(const std::string& cmd) {
+    std::array<char, 128> buffer;
+    std::string result;
+
+    using PipeDeleter = int (*)(FILE*);
+    std::unique_ptr<FILE, PipeDeleter> pipe(popen(cmd.c_str(), "r"), pclose);
+    if (!pipe) {
+        throw std::runtime_error("popen() failed!");
+    }
+
+    // Read the output of the command line by line
+    while (fgets(buffer.data(), buffer.size(), pipe.get()) != nullptr) {
+        result += buffer.data();
+    }
+
     return result;
 }
 
@@ -60,7 +74,42 @@ namespace nyafetch {
         Config(std::string filepath) {
             // parse toml config file
             toml::table config_tb = toml::parse_file(filepath);
-            
+
+            // read [main] table
+            if (auto main_tb_val = config_tb.get("main")) {
+                auto main_tb = main_tb_val->as_table();
+                if (auto order_array = main_tb->get("order")) {
+                    std::vector<std::string> order;
+                    for (auto& val : *order_array->as_array()) {
+                        std::string str = val.as_string()->get();
+                        replace_all(str, "\\x1b", "\x1b");
+                        order.push_back(str);
+                    }
+                    this->order = order;
+                }
+                if (auto seperator_val = main_tb->get_as<std::string>("seperator")) {
+                    this->seperator = seperator_val->get();
+                    replace_all(this->seperator, "\\x1b", "\x1b");
+                }
+            }
+            // read [format] table
+            if (auto format_tb_val = config_tb.get("format")) {
+                auto format_tb = format_tb_val->as_table();
+                std::unordered_map<std::string, std::pair<std::string, std::string>> format_map;
+                for (const auto& [section_key, section_value] : *format_tb) {
+                    // check if field is a table
+                    if (auto section_table = section_value.as_table()) {
+                        // Get the key and value
+                        std::string key = section_table->get_as<std::string>("key")->get();
+                        std::string value = section_table->get_as<std::string>("value")->get();
+                
+                        // Insert into the unordered_map
+                        format_map[std::string(section_key.str())] = {key, value};
+                    }
+                }
+                this->format_map = format_map;
+            }
+            /*
             // read [format] into a table
             if (auto format_tb_val = config_tb.get("format")) {
                 auto format_tb = format_tb_val->as_table();
@@ -108,9 +157,7 @@ namespace nyafetch {
                     this->seperator = seperator_val->get();
                     replace_all(this->seperator, "\\x1b", "\x1b");
                 }
-            }
- 
-
+            }*/
             // read [appearance] to table
             if (auto appearance_tb_val = config_tb.get("appearance")) {
                 auto appearance_tb = appearance_tb_val->as_table();
@@ -138,8 +185,8 @@ namespace nyafetch {
 
         Config(){}
 
-        // format
-        std::string os = "%OS_NAME%";
+        // old format
+        /*std::string os = "%OS_NAME%";
         std::string kernel = "Linux %KERNEL_VERSION%";
         std::string uptime = "%UPTIME%";
         std::string cpu = "%CPU% (%CPU_CORES%) @ %CPU_FREQMHz";
@@ -147,33 +194,66 @@ namespace nyafetch {
         std::string memory = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)";
         std::vector<std::string> order = {"OS", "KERNEL", "UPTIME", "CPU", "GPU", "MEMORY"};
         std::string seperator = " -> ";
-        bool uwuify = true;
+        bool uwuify = true;*/
+        // format
+        // map structure: format identifier -> key, value
+        std::unordered_map<std::string, std::pair<std::string, std::string>> format_map = {
+            {"os",     {"OS    ", "%OS_NAME%"}},
+            {"kernel", {"Kernel", "Linux %KERNEL_VERSION%"}},
+            {"uptime", {"Uptime", "%UPTIME%"}},
+            {"cpu",    {"CPU   ", "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"}},
+            {"gpu",    {"GPU   ", "%GPU%"}},
+            {"memory", {"Memory", "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)"}},
+            {"custom_example", {"Disk /", "SH:df -h | awk '/% \\/$/ {print $5 \" used\"}'"}},
+        };
+        std::vector<std::string> order = {"os", "kernel", "uptime", "cpu", "gpu", "memory", "custom_example"};
+        std::string seperator = " -> ";
         // appearance
-        std::string key_color = "\x1b[38;5;213m";
+        std::string key_color = "\x1b[38;5;7m";
         std::string seperator_color = "\x1b[38;5;213m";
         std::string value_color = "\x1b[38;5;7m";
         std::string distro_art_color = "\x1b[38;5;213m";
 
         static Config WriteDefaultConfig(std::string filepath) {
             std::ofstream file(filepath);
-            file << R"configfile([format]
-os     = "%OS_NAME%"               # possible values: OS_NAME OS_ID
-kernel = "Linux %KERNEL_VERSION%"  # possible values: KERNEL_VERSION 
-uptime = "%UPTIME%"                # possible values: UPTIME
-cpu    = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"         # possible values: CPU CPU_CORES CPU_FREQ
-gpu    = "%GPU%"                                       # possible values: GPU
-memory = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
-order  = ["OS", "KERNEL", "UPTIME", "CPU", "GPU", "MEMORY"]
-uwuify = true
+            file << R"configfile([main]
+order  = ["os", "kernel", "uptime", "cpu", "gpu", "memory", "custom_example"]
 seperator = " -> "
+
+[format.os]
+key = "OS    "
+value = "%OS_NAME%"                                   # possible values: OS_NAME OS_ID
+
+[format.kernel]
+key = "Kernel"
+value = "Linux %KERNEL_VERSION%"                      # possible values: KERNEL_VERSION 
+
+[format.uptime]
+key = "Uptime"
+value = "%UPTIME%"                                    # possible values: UPTIME
+
+[format.cpu]
+key = "CPU   "
+value = "%CPU% (%CPU_CORES%) @ %CPU_FREQ%MHz"         # possible values: CPU CPU_CORES CPU_FREQ
+
+[format.gpu]
+key = "GPU   "
+value = "%GPU%"                                       # possible values: GPU
+
+[format.memory]
+key = "Memory"
+value = "%MEM_USED%/%MEM_TOTAL% (%MEM_USED_PERCENT%)" # possible values: MEM_USED MEM_TOTAL MEM_AVAILABLE MEM_USED_PERCENT
+
+[format.custom_example]
+key = "Disk /"
+value = "SH:df -h | awk '/% \\/$/ {print $5 \" used\"}'"         # values starting with 'SH:' are run by the default shell (/bin/sh)
 
 [appearance]
 # ANSI escape codes
-key_color = "\\x1b[38;5;213m"
-seperator_color = "\\x1b[38;5;7m"
-value_color = "\\x1b[38;5;213m"
-distro_art_color = "\\x1b[38;5;213m"
-)configfile";
+key_color = "\\x1b[38;5;7m"
+seperator_color = "\\x1b[38;5;213m"
+value_color = "\\x1b[38;5;7m"
+distro_art_color = "\\x1b[38;5;213m")configfile";
             file.close();
             return Config(filepath);          
         }
