@@ -13,9 +13,11 @@
 #include "nyafetch.hpp"
 #include "crc.hpp"
 
+#ifdef PCI
 extern "C" {
 #include <pci/pci.h>
 }
+#endif
 
 // index 0: ID
 // index 1: NAME
@@ -130,6 +132,7 @@ std::array<std::string, 3> get_cpuinfo() {
     return cpuinfo;
 }
 
+#ifdef PCI
 std::vector<std::string> get_gpu_names() {
     std::vector<std::string> gpus;
 
@@ -167,6 +170,7 @@ std::vector<std::string> get_gpu_names() {
     pci_cleanup(pciaccess);
     return gpus;
 }
+#endif
 
 // 0: MEM_TOTAL
 // 1: MEM_AVAILABLE
@@ -387,6 +391,7 @@ int main(int argc, char** argv) {
                 replace_all(line, "%CPU_CORES%", cpuinfo[2]);
                 break;
             }
+#ifdef PCI
             case 1120412128: { // 'gpu'
                 std::vector<std::string> gpus = get_gpu_names();
                 size_t gpus_size = gpus.size();
@@ -404,6 +409,7 @@ int main(int argc, char** argv) {
                 }
                 break;
             }
+#endif
             case 1538233750: { // 'memory'
                 std::array<std::string, 4> meminfo = get_meminfo(); 
                 line += config.key_color + config.format_map["memory"].first + RESET;
